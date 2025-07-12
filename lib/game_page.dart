@@ -12,19 +12,27 @@ class GamePage extends StatefulWidget {
 }
 
 class _GamePageState extends State<GamePage> {
-  final List<String> photoList = [
-    'assets/images/test_image1.jpg',
-    'assets/images/test_image2.jpg',
-    'assets/images/test_image3.jpg',
-  ];
-
   late final PageController _pageController;
   int _currentPage = 0;
+
+  final List<Location> _locations = [
+    Location(imagePath: 'assets/images/test_image1.jpg', name: '장소 1'),
+    Location(imagePath: 'assets/images/test_image2.jpg', name: '장소 2'),
+    Location(imagePath: 'assets/images/test_image3.jpg', name: '장소 3'),
+    Location(imagePath: 'assets/images/test_image1.jpg', name: '장소 1'),
+    Location(imagePath: 'assets/images/test_image2.jpg', name: '장소 2'),
+  ];
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(viewportFraction: 0.9);
+    _pageController = PageController(viewportFraction: 1.0);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      for (final loc in _locations) {
+        precacheImage(AssetImage(loc.imagePath), context);
+      }
+    });
   }
 
   @override
@@ -42,29 +50,25 @@ class _GamePageState extends State<GamePage> {
         actions: [
           GameTimer(
             isExplorer: widget.isExplorer,
-            onTimeOver: () {
-              // 시간 종료 시 처리
-              _showGameOverDialog(context); // 예시 함수
-            },
+            onTimeOver: () => _showGameOverDialog(context),
           ),
           IconButton(
-            icon: const Icon(Icons.flag), // 예: 종료 버튼
-            onPressed: () {
-              _showGameExitDialog(context);
-            },
+            icon: const Icon(Icons.flag),
+            onPressed: () => _showGameExitDialog(context),
           ),
         ],
       ),
       body: Stack(
         children: [
-          // 1. 카카오맵 자리
+          // 지도 영역 (대체로 Kakao Map 위젯이 들어갈 자리)
           Container(
-            color: Colors.grey[300], // 실제 지도 대신 임시색
+            color: Colors.grey[300],
             child: const Center(child: Text('카카오맵 영역')),
           ),
-          // 2. 아래 Drawer 패널
+
+          // 아래쪽 슬라이딩 패널
           PhotoDrawerPanel(
-            photoList: photoList,
+            locations: _locations,
             pageController: _pageController,
             currentPage: _currentPage,
             onPageChanged: (index) {
@@ -92,7 +96,6 @@ class GameTimer extends StatefulWidget {
   @override
   State<GameTimer> createState() => _GameTimerState();
 }
-
 class _GameTimerState extends State<GameTimer> {
   Timer? _timer;
   int _seconds = 0;
@@ -146,14 +149,14 @@ class _GameTimerState extends State<GameTimer> {
 }
 
 class PhotoDrawerPanel extends StatefulWidget {
-  final List<String> photoList;
+  final List<Location> locations;
   final PageController pageController;
   final int currentPage;
   final void Function(int) onPageChanged;
 
   const PhotoDrawerPanel({
     super.key,
-    required this.photoList,
+    required this.locations,
     required this.pageController,
     required this.currentPage,
     required this.onPageChanged,
@@ -183,8 +186,8 @@ class _PhotoDrawerPanelState extends State<PhotoDrawerPanel> {
     return Align(
       alignment: Alignment.bottomCenter,
       child: SlidingUpPanel(
-        minHeight: 100,
-        maxHeight: 800,
+        minHeight: 120,
+        maxHeight: 450,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
         panel: Column(
           children: [
@@ -192,19 +195,13 @@ class _PhotoDrawerPanelState extends State<PhotoDrawerPanel> {
             Expanded(
               child: Stack(
                 children: [
-                  PageView.builder(
+                  PageView(
                     controller: widget.pageController,
-                    itemCount: widget.photoList.length,
                     onPageChanged: widget.onPageChanged,
-                    itemBuilder: (context, index) {
-                      return Image.asset(
-                        widget.photoList[index],
-                        fit: BoxFit.cover,
-                      );
-                    },
+                    children: widget.locations
+                        .map((loc) => LocationCard(location: loc))
+                        .toList(),
                   ),
-
-                  // 왼쪽 화살표
                   if (widget.currentPage > 0)
                     Positioned(
                       left: 10,
@@ -220,9 +217,7 @@ class _PhotoDrawerPanelState extends State<PhotoDrawerPanel> {
                         },
                       ),
                     ),
-
-                  // 오른쪽 화살표
-                  if (widget.currentPage < widget.photoList.length - 1)
+                  if (widget.currentPage < widget.locations.length - 1)
                     Positioned(
                       right: 10,
                       top: 0,
@@ -247,6 +242,110 @@ class _PhotoDrawerPanelState extends State<PhotoDrawerPanel> {
   }
 }
 
+class Location {
+  final String imagePath;
+  final String name;
+  int hintUsed = 0;
+
+  Location({
+    required this.imagePath,
+    required this.name,
+  });
+}
+
+class LocationCard extends StatelessWidget {
+  final Location location;
+  const LocationCard({super.key, required this.location});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(
+          color: Colors.black12,
+          blurRadius: 8,
+          offset: Offset(0, 4),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            onTap: () {
+              showDialog(
+                context: context,
+                builder: (_) => Dialog(
+                  insetPadding: const EdgeInsets.all(16),
+                  backgroundColor: Colors.black,
+                  child: InteractiveViewer(
+                    child: Image.asset(
+                      location.imagePath,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+              );
+            },
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.asset(
+                location.imagePath,
+                height: 300,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                cacheWidth: 600,
+                cacheHeight: 800,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // 🧭 힌트 버튼
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              ElevatedButton.icon(
+                onPressed: () {
+                  // TODO: 힌트 표시 로직
+                  print('힌트 버튼 눌림');
+                },
+                icon: const Icon(Icons.lightbulb),
+                label: const Text('힌트 보기'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(48, 48),
+                ),
+              ),
+              // 🏁 정답 도전 버튼
+              ElevatedButton.icon(
+                onPressed: () {
+                  // TODO: 정답 도전 로직
+                  print('정답 도전 버튼 눌림');
+                },
+                icon: const Icon(Icons.check_circle),
+                label: const Text('정답 도전'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(48, 48),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
 void _showGameExitDialog(BuildContext context) {
   showDialog(
     context: context,
@@ -269,7 +368,6 @@ void _showGameExitDialog(BuildContext context) {
     ),
   );
 }
-
 void _showGameOverDialog(BuildContext context) {
   showDialog(
     context: context,
