@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:locquest_front/start_page.dart';
+import 'package:kakao_map_plugin/kakao_map_plugin.dart';
 
 void main() {
+  AuthRepository.initialize(appKey: '536d4da453db14920558d4b8e1e2ed03');
   runApp(const MyApp());
 }
 

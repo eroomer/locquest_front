@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
+import 'package:kakao_map_plugin/kakao_map_plugin.dart';
 import 'dart:async';
 
 class GamePage extends StatefulWidget {
@@ -61,10 +62,7 @@ class _GamePageState extends State<GamePage> {
       body: Stack(
         children: [
           // 지도 영역 (대체로 Kakao Map 위젯이 들어갈 자리)
-          Container(
-            color: Colors.grey[300],
-            child: const Center(child: Text('카카오맵 영역')),
-          ),
+          KakaoMap(),
 
           // 아래쪽 슬라이딩 패널
           PhotoDrawerPanel(
