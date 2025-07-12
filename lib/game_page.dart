@@ -16,17 +16,20 @@ class GamePage extends StatefulWidget {
 class _GamePageState extends State<GamePage> {
   late final PageController _pageController;
   late KakaoMapController mapController;
+  bool isDefaultMap = true; // 지도 타입(지도/스카이뷰)
+  int mapLevel = 5;     // 지도 확대 수준
+
   Set<Marker> markers = {};
   LatLng currentLatLng = LatLng(37.5665, 126.9780); // 현재 user 좌표 (초기값: 서울)
   bool isMapReady = false;
   int _currentPage = 0;
 
   final List<Location> _locations = [
-    Location(imagePath: 'assets/images/test_image1.jpg', name: '장소 1'),
-    Location(imagePath: 'assets/images/test_image2.jpg', name: '장소 2'),
-    Location(imagePath: 'assets/images/test_image3.jpg', name: '장소 3'),
-    Location(imagePath: 'assets/images/test_image1.jpg', name: '장소 1'),
-    Location(imagePath: 'assets/images/test_image2.jpg', name: '장소 2'),
+    Location(imagePath: 'assets/images/test_image1.jpg', name: '의문의 문', position: LatLng(36.36652, 127.36088)),
+    Location(imagePath: 'assets/images/test_image2.jpg', name: '오리벽화', position: LatLng(36.36722, 127.35993)),
+    Location(imagePath: 'assets/images/test_image3.jpg', name: '맹꽁이 사다리', position: LatLng(36.36700, 127.35924)),
+    Location(imagePath: 'assets/images/test_image4.jpg', name: '산불조심', position: LatLng(36.36685, 127.35908)),
+    Location(imagePath: 'assets/images/test_image5.jpg', name: '컨테이너', position: LatLng(36.36828, 127.35731)),
   ];
 
   @override
@@ -119,18 +122,83 @@ class _GamePageState extends State<GamePage> {
             KakaoMap(
               onMapCreated: ((controller)  {
                 mapController = controller;
-                mapController.setDraggable(false);
-                mapController.setZoomable(false);
+                mapController.setDraggable(false);  // 지도 이동 불가 설정
+                mapController.setZoomable(false);   // 지도 확대 불가 설정
                 }),
               center: currentLatLng,
-              maxLevel: 5,
-              mapTypeControl: true,
-              mapTypeControlPosition: ControlPosition.topRight,
-              zoomControl: true,
-              zoomControlPosition: ControlPosition.right,
               )
           else
             const Center(child: CircularProgressIndicator()), // 로딩 중
+
+          GestureDetector(
+            onDoubleTap: () {
+              // 아무 동작도 하지 않음 → 더블탭 줌 무력화
+            },
+            behavior: HitTestBehavior.translucent,
+            child: Container(
+              color: Colors.transparent,
+            ),
+          ),
+
+          Align(
+            alignment: Alignment.topRight,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    MaterialButton(
+                      onPressed: () {
+                        setState(() {
+                          isDefaultMap = true;
+                        });
+
+                        mapController.setMapTypeId(MapType.roadMap);
+                      },
+                      color: isDefaultMap ? Colors.blue : Colors.grey,
+                      child: const Text('지도'),
+                    ),
+                    MaterialButton(
+                      onPressed: () {
+                        setState(() {
+                          isDefaultMap = false;
+                        });
+
+                        mapController.setMapTypeId(MapType.skyView);
+                      },
+                      color: isDefaultMap ? Colors.grey : Colors.blue,
+                      child: const Text('스카이뷰'),
+                    ),
+                  ],
+                ),
+                Column(
+                  children: [
+                    ElevatedButton(
+                      onPressed: () {
+                        mapLevel--;
+                        if (mapLevel <= 1) mapLevel = 1;
+                        mapController.setLevel(mapLevel);
+
+                        setState(() {});
+                      },
+                      child: const Text('+'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        mapLevel++;
+                        if (mapLevel >= 5) mapLevel = 5;
+                        mapController.setLevel(mapLevel);
+
+                        setState(() {});
+                      },
+                      child: const Text('-'),
+                    ),
+                  ],
+                )
+              ],
+            ),
+          ),
 
           // 지도 중앙 고정 마커 (지도 준비 완료 시에만 표시)
           if (isMapReady)
@@ -147,6 +215,22 @@ class _GamePageState extends State<GamePage> {
               setState(() {
                 _currentPage = index;
               });
+            },
+            onCheckAnswer: (Location loc) {
+              final dist = latlngDistance(currentLatLng, loc.position);
+              showDialog(
+                context: context,
+                builder: (_) => AlertDialog(
+                  title: const Text('도전 결과'),
+                  content: Text('사진 속 장소와 거리: ${dist.toStringAsFixed(1)} m'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('확인'),
+                    ),
+                  ],
+                ),
+              );
             },
           ),
         ],
@@ -225,6 +309,7 @@ class PhotoDrawerPanel extends StatefulWidget {
   final PageController pageController;
   final int currentPage;
   final void Function(int) onPageChanged;
+  final void Function(Location location) onCheckAnswer;
 
   const PhotoDrawerPanel({
     super.key,
@@ -232,6 +317,7 @@ class PhotoDrawerPanel extends StatefulWidget {
     required this.pageController,
     required this.currentPage,
     required this.onPageChanged,
+    required this.onCheckAnswer,
   });
 
   @override
@@ -271,7 +357,9 @@ class _PhotoDrawerPanelState extends State<PhotoDrawerPanel> {
                     controller: widget.pageController,
                     onPageChanged: widget.onPageChanged,
                     children: widget.locations
-                        .map((loc) => LocationCard(location: loc))
+                        .map((loc) => LocationCard(
+                        location: loc,
+                        onCheckAnswerPressed: () => widget.onCheckAnswer(loc) ))
                         .toList(),
                   ),
                   if (widget.currentPage > 0)
@@ -317,17 +405,24 @@ class _PhotoDrawerPanelState extends State<PhotoDrawerPanel> {
 class Location {
   final String imagePath;
   final String name;
+  final LatLng position;
   int hintUsed = 0;
 
   Location({
     required this.imagePath,
     required this.name,
+    required this.position
   });
 }
 
 class LocationCard extends StatelessWidget {
   final Location location;
-  const LocationCard({super.key, required this.location});
+  final VoidCallback onCheckAnswerPressed;
+  const LocationCard({
+    super.key,
+    required this.location,
+    required this.onCheckAnswerPressed
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -397,10 +492,7 @@ class LocationCard extends StatelessWidget {
               ),
               // 🏁 정답 도전 버튼
               ElevatedButton.icon(
-                onPressed: () {
-                  // TODO: 정답 도전 로직
-                  print('정답 도전 버튼 눌림');
-                },
+                onPressed: onCheckAnswerPressed,
                 icon: const Icon(Icons.check_circle),
                 label: const Text('정답 도전'),
                 style: ElevatedButton.styleFrom(
@@ -449,6 +541,15 @@ Future<LatLng?> getCurrentLocation() async {
     print("[getCurrentLocation] 위치 요청 실패: $e");
     return null;
   }
+}
+
+double latlngDistance(LatLng pointA, LatLng pointB) {
+  return Geolocator.distanceBetween(
+    pointA.latitude,
+    pointA.longitude,
+    pointB.latitude,
+    pointB.longitude,
+  );
 }
 
 void _showGameExitDialog(BuildContext context) {
