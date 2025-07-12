@@ -21,7 +21,7 @@ class StartPage extends StatelessWidget {
             );
           }),
           CustomButton(text: '랭킹보기', onPressed: (){}),
-          CustomButton(text: '내 기록', onPressed: (){}),
+          CustomButton(text: '내 정보', onPressed: (){}),
         ],
       ),
     );

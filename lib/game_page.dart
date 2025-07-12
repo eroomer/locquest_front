@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 import 'package:kakao_map_plugin/kakao_map_plugin.dart';
+import 'package:geolocator/geolocator.dart';
 import 'dart:async';
 
 class GamePage extends StatefulWidget {
@@ -14,6 +15,10 @@ class GamePage extends StatefulWidget {
 
 class _GamePageState extends State<GamePage> {
   late final PageController _pageController;
+  late KakaoMapController mapController;
+  Set<Marker> markers = {};
+  LatLng currentLatLng = LatLng(37.5665, 126.9780); // 현재 user 좌표 (초기값: 서울)
+  bool isMapReady = false;
   int _currentPage = 0;
 
   final List<Location> _locations = [
@@ -27,8 +32,10 @@ class _GamePageState extends State<GamePage> {
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(viewportFraction: 1.0);
+    initLocation();
+    _initLiveLocation();
 
+    _pageController = PageController(viewportFraction: 1.0);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       for (final loc in _locations) {
         precacheImage(AssetImage(loc.imagePath), context);
@@ -40,6 +47,53 @@ class _GamePageState extends State<GamePage> {
   void dispose() {
     _pageController.dispose();
     super.dispose();
+  }
+
+  // 지도 초기화 함수
+  Future<void> initLocation() async {
+    print('[initLocation] 위치 요청 시작');
+    final loc = await getCurrentLocation();
+    if (loc != null) {
+      print('[initLocation] 위치 가져오기 성공: \${loc.latitude}, \${loc.longitude}');
+      setState(() {
+        currentLatLng = loc;
+        isMapReady = true; // 지도 렌더링 조건
+      });
+      //mapController.setCenter(loc);
+    }
+  }
+  // 사용자 위치 추적 시작 함수
+  void _initLiveLocation() {
+    Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 5,
+      ),
+    ).listen((Position position) {
+      final newLatLng = LatLng(position.latitude, position.longitude);
+
+      // 지도 중심 이동
+      animateMapCenter(currentLatLng, newLatLng);
+
+      // 현재 위치 갱신
+      setState(() {
+        currentLatLng = newLatLng;
+      });
+    });
+  }
+
+  void animateMapCenter(LatLng from, LatLng to) async {
+    const steps = 30;
+    const duration = Duration(milliseconds: 600);
+
+    for (int i = 0; i <= steps; i++) {
+      final t = i / steps;
+      final lat = from.latitude + (to.latitude - from.latitude) * t;
+      final lng = from.longitude + (to.longitude - from.longitude) * t;
+
+      mapController.setCenter(LatLng(lat, lng));
+      await Future.delayed(duration ~/ steps);
+    }
   }
 
   @override
@@ -61,8 +115,28 @@ class _GamePageState extends State<GamePage> {
       ),
       body: Stack(
         children: [
-          // 지도 영역 (대체로 Kakao Map 위젯이 들어갈 자리)
-          KakaoMap(),
+          if (isMapReady)
+            KakaoMap(
+              onMapCreated: ((controller)  {
+                mapController = controller;
+                mapController.setDraggable(false);
+                mapController.setZoomable(false);
+                }),
+              center: currentLatLng,
+              maxLevel: 5,
+              mapTypeControl: true,
+              mapTypeControlPosition: ControlPosition.topRight,
+              zoomControl: true,
+              zoomControlPosition: ControlPosition.right,
+              )
+          else
+            const Center(child: CircularProgressIndicator()), // 로딩 중
+
+          // 지도 중앙 고정 마커 (지도 준비 완료 시에만 표시)
+          if (isMapReady)
+            const Center(
+              child: Icon(Icons.person_pin_circle, size: 48, color: Colors.red),
+            ),
 
           // 아래쪽 슬라이딩 패널
           PhotoDrawerPanel(
@@ -184,7 +258,7 @@ class _PhotoDrawerPanelState extends State<PhotoDrawerPanel> {
     return Align(
       alignment: Alignment.bottomCenter,
       child: SlidingUpPanel(
-        minHeight: 120,
+        minHeight: 45,
         maxHeight: 450,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
         panel: Column(
@@ -343,6 +417,39 @@ class LocationCard extends StatelessWidget {
   }
 }
 
+// 현재 위치 반환 함수
+Future<LatLng?> getCurrentLocation() async {
+  print("[getCurrentLocation] 위치 권한 상태 확인 중...");
+
+  LocationPermission permission = await Geolocator.checkPermission();
+
+  if (permission == LocationPermission.denied) {
+    print("[getCurrentLocation] 권한이 거부됨 → 요청 시도");
+    permission = await Geolocator.requestPermission();
+  }
+
+  if (permission == LocationPermission.deniedForever) {
+    print("[getCurrentLocation] 권한 영구 거부됨 → 설정에서 수동 허용 필요");
+    return null;
+  }
+
+  if (permission != LocationPermission.whileInUse &&
+      permission != LocationPermission.always) {
+    print("[getCurrentLocation] 권한 없음 (기타 상태): $permission");
+    return null;
+  }
+
+  try {
+    Position pos = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+    );
+    print("[getCurrentLocation] 위치 획득: ${pos.latitude}, ${pos.longitude}");
+    return LatLng(pos.latitude, pos.longitude);
+  } catch (e) {
+    print("[getCurrentLocation] 위치 요청 실패: $e");
+    return null;
+  }
+}
 
 void _showGameExitDialog(BuildContext context) {
   showDialog(
