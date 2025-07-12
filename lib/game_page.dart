@@ -3,6 +3,7 @@ import 'package:sliding_up_panel/sliding_up_panel.dart';
 import 'package:kakao_map_plugin/kakao_map_plugin.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:async';
+import 'dart:math';
 
 class GamePage extends StatefulWidget {
   final bool isExplorer;
@@ -20,16 +21,17 @@ class _GamePageState extends State<GamePage> {
   int mapLevel = 5;     // 지도 확대 수준
 
   Set<Marker> markers = {};
+  Set<Circle> _hintCircles = {};
   LatLng currentLatLng = LatLng(37.5665, 126.9780); // 현재 user 좌표 (초기값: 서울)
   bool isMapReady = false;
   int _currentPage = 0;
 
   final List<Location> _locations = [
-    Location(imagePath: 'assets/images/test_image1.jpg', name: '의문의 문', position: LatLng(36.36652, 127.36088)),
-    Location(imagePath: 'assets/images/test_image2.jpg', name: '오리벽화', position: LatLng(36.36722, 127.35993)),
-    Location(imagePath: 'assets/images/test_image3.jpg', name: '맹꽁이 사다리', position: LatLng(36.36700, 127.35924)),
-    Location(imagePath: 'assets/images/test_image4.jpg', name: '산불조심', position: LatLng(36.36685, 127.35908)),
-    Location(imagePath: 'assets/images/test_image5.jpg', name: '컨테이너', position: LatLng(36.36828, 127.35731)),
+    Location(imagePath: 'assets/images/test_image1.jpg', name: '의문의 문', position: LatLng(36.366456, 127.360971)),
+    Location(imagePath: 'assets/images/test_image2.jpg', name: '오리벽화', position: LatLng(36.367199, 127.359958)),
+    Location(imagePath: 'assets/images/test_image3.jpg', name: '맹꽁이 사다리', position: LatLng(36.366952, 127.359182)),
+    Location(imagePath: 'assets/images/test_image4.jpg', name: '산불조심', position: LatLng(36.367044, 127.358994)),
+    Location(imagePath: 'assets/images/test_image5.jpg', name: '컨테이너', position: LatLng(36.368302, 127.357846)),
   ];
 
   @override
@@ -84,7 +86,7 @@ class _GamePageState extends State<GamePage> {
       });
     });
   }
-
+  // 지도 중심 이동 함수
   void animateMapCenter(LatLng from, LatLng to) async {
     const steps = 30;
     const duration = Duration(milliseconds: 600);
@@ -126,6 +128,7 @@ class _GamePageState extends State<GamePage> {
                 mapController.setZoomable(false);   // 지도 확대 불가 설정
                 }),
               center: currentLatLng,
+              circles: _hintCircles.toList(),
               )
           else
             const Center(child: CircularProgressIndicator()), // 로딩 중
@@ -140,6 +143,7 @@ class _GamePageState extends State<GamePage> {
             ),
           ),
 
+          // 지도 조정 툴
           Align(
             alignment: Alignment.topRight,
             child: Column(
@@ -187,7 +191,7 @@ class _GamePageState extends State<GamePage> {
                     ElevatedButton(
                       onPressed: () {
                         mapLevel++;
-                        if (mapLevel >= 5) mapLevel = 5;
+                        if (mapLevel >= 6) mapLevel = 6;
                         mapController.setLevel(mapLevel);
 
                         setState(() {});
@@ -214,6 +218,32 @@ class _GamePageState extends State<GamePage> {
             onPageChanged: (index) {
               setState(() {
                 _currentPage = index;
+              });
+            },
+            onHintPressed: (Location loc) {
+              if (loc.hintUsed >= 3) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('더 이상 힌트를 사용할 수 없습니다.')),
+                );
+                return;
+              }
+              loc.hintUsed++; // 힌트 사용 횟수 증가
+              final radius = [200, 100, 50][loc.hintUsed - 1]; // 반경 결정
+              final offsetCenter = randomOffsetAround(loc.position, radius.toDouble());
+
+              final circle = Circle(
+                circleId: 'hintcircle_${_hintCircles.length}',
+                center: offsetCenter,
+                radius: radius.toDouble(),
+                strokeColor: Colors.orange,
+                strokeOpacity: 0.5,
+                strokeStyle: StrokeStyle.dash,
+                strokeWidth: 2,
+                fillColor: Colors.orange,
+                fillOpacity: 0.2,
+              );
+              setState(() {
+                _hintCircles.add(circle); // 원 추가
               });
             },
             onCheckAnswer: (Location loc) {
@@ -309,6 +339,7 @@ class PhotoDrawerPanel extends StatefulWidget {
   final PageController pageController;
   final int currentPage;
   final void Function(int) onPageChanged;
+  final void Function(Location location) onHintPressed;
   final void Function(Location location) onCheckAnswer;
 
   const PhotoDrawerPanel({
@@ -317,6 +348,7 @@ class PhotoDrawerPanel extends StatefulWidget {
     required this.pageController,
     required this.currentPage,
     required this.onPageChanged,
+    required this.onHintPressed,
     required this.onCheckAnswer,
   });
 
@@ -358,9 +390,10 @@ class _PhotoDrawerPanelState extends State<PhotoDrawerPanel> {
                     onPageChanged: widget.onPageChanged,
                     children: widget.locations
                         .map((loc) => LocationCard(
-                        location: loc,
-                        onCheckAnswerPressed: () => widget.onCheckAnswer(loc) ))
-                        .toList(),
+                          location: loc,
+                          onCheckAnswerPressed: () => widget.onCheckAnswer(loc),
+                          onHintPressed: () => widget.onHintPressed(loc),
+                        )).toList(),
                   ),
                   if (widget.currentPage > 0)
                     Positioned(
@@ -417,10 +450,12 @@ class Location {
 
 class LocationCard extends StatelessWidget {
   final Location location;
+  final VoidCallback onHintPressed;
   final VoidCallback onCheckAnswerPressed;
   const LocationCard({
     super.key,
     required this.location,
+    required this.onHintPressed,
     required this.onCheckAnswerPressed
   });
 
@@ -478,10 +513,7 @@ class LocationCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               ElevatedButton.icon(
-                onPressed: () {
-                  // TODO: 힌트 표시 로직
-                  print('힌트 버튼 눌림');
-                },
+                onPressed: onHintPressed,
                 icon: const Icon(Icons.lightbulb),
                 label: const Text('힌트 보기'),
                 style: ElevatedButton.styleFrom(
@@ -550,6 +582,27 @@ double latlngDistance(LatLng pointA, LatLng pointB) {
     pointB.latitude,
     pointB.longitude,
   );
+}
+
+LatLng randomOffsetAround(LatLng center, double radiusInMeters) {
+  final random = Random();
+
+  // 오프셋 거리: 반지름의 0% ~ 70% 내에서 랜덤
+  final distance = (radiusInMeters * (random.nextDouble() * 0.7)); // [0% ~ 70%]
+  final bearing = random.nextDouble() * 2 * pi; // [0 ~ 2π]
+
+  const earthRadius = 6371000.0; // meters
+
+  final lat1 = center.latitude * pi / 180;
+  final lon1 = center.longitude * pi / 180;
+
+  final lat2 = asin(sin(lat1) * cos(distance / earthRadius) +
+      cos(lat1) * sin(distance / earthRadius) * cos(bearing));
+  final lon2 = lon1 +
+      atan2(sin(bearing) * sin(distance / earthRadius) * cos(lat1),
+          cos(distance / earthRadius) - sin(lat1) * sin(lat2));
+
+  return LatLng(lat2 * 180 / pi, lon2 * 180 / pi);
 }
 
 void _showGameExitDialog(BuildContext context) {
