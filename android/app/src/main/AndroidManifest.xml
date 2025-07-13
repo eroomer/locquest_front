@@ -9,6 +9,22 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true">
+        <meta-data
+            android:name="com.kakao.sdk.AppKey"
+            android:value="d1847048a1f58aeb83b34e2914f689c8" />
+
+        <!-- ✅ 카카오 Redirect를 수신할 Activity -->
+        <activity
+            android:name="com.kakao.sdk.flutter.AuthCodeCustomTabsActivity"
+            android:exported="true">
+            <intent-filter android:label="flutter_web_auth">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="kakaod1847048a1f58aeb83b34e2914f689c8" android:host="oauth" />
+            </intent-filter>
+        </activity>
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
