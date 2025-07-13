@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:locquest_front/mode_select_page.dart';
+import 'package:locquest_front/ranking_page.dart';
+import 'package:locquest_front/myrecord_page.dart';
 
 class StartPage extends StatelessWidget {
   const StartPage({super.key});
@@ -20,8 +22,18 @@ class StartPage extends StatelessWidget {
               MaterialPageRoute(builder: (context) => ModeSelectPage()),
             );
           }),
-          CustomButton(text: '랭킹보기', onPressed: (){}),
-          CustomButton(text: '내 정보', onPressed: (){}),
+          CustomButton(text: '랭킹보기', onPressed: (){
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => RankingPage()),
+            );
+          }),
+          CustomButton(text: '내 기록', onPressed: (){
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => MyRecordPage()),
+            );
+          }),
         ],
       ),
     );
