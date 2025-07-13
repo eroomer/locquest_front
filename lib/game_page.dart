@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 import 'package:kakao_map_plugin/kakao_map_plugin.dart';
 import 'package:geolocator/geolocator.dart';
@@ -21,7 +22,7 @@ class _GamePageState extends State<GamePage> {
   int mapLevel = 5;     // 지도 확대 수준
 
   Set<Marker> markers = {};
-  Set<Circle> _hintCircles = {};
+  List<Set<Circle>> hintCircles = List.generate(5, (_) => <Circle>{});
   LatLng currentLatLng = LatLng(37.5665, 126.9780); // 현재 user 좌표 (초기값: 서울)
   bool isMapReady = false;
   int _currentPage = 0;
@@ -121,94 +122,19 @@ class _GamePageState extends State<GamePage> {
       body: Stack(
         children: [
           if (isMapReady)
-            KakaoMap(
-              onMapCreated: ((controller)  {
-                mapController = controller;
-                mapController.setDraggable(false);  // 지도 이동 불가 설정
-                mapController.setZoomable(false);   // 지도 확대 불가 설정
-                }),
-              center: currentLatLng,
-              circles: _hintCircles.toList(),
-              )
+            SizedBox(
+              height: MediaQuery.of(context).size.height * 0.7,
+              width: MediaQuery.of(context).size.width,
+              child: KakaoMap(
+                onMapCreated: ((controller)  {
+                  mapController = controller;
+                  }),
+                center: currentLatLng,
+                currentLevel: 5,
+                ),
+            )
           else
             const Center(child: CircularProgressIndicator()), // 로딩 중
-
-          GestureDetector(
-            onDoubleTap: () {
-              // 아무 동작도 하지 않음 → 더블탭 줌 무력화
-            },
-            behavior: HitTestBehavior.translucent,
-            child: Container(
-              color: Colors.transparent,
-            ),
-          ),
-
-          // 지도 조정 툴
-          Align(
-            alignment: Alignment.topRight,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    MaterialButton(
-                      onPressed: () {
-                        setState(() {
-                          isDefaultMap = true;
-                        });
-
-                        mapController.setMapTypeId(MapType.roadMap);
-                      },
-                      color: isDefaultMap ? Colors.blue : Colors.grey,
-                      child: const Text('지도'),
-                    ),
-                    MaterialButton(
-                      onPressed: () {
-                        setState(() {
-                          isDefaultMap = false;
-                        });
-
-                        mapController.setMapTypeId(MapType.skyView);
-                      },
-                      color: isDefaultMap ? Colors.grey : Colors.blue,
-                      child: const Text('스카이뷰'),
-                    ),
-                  ],
-                ),
-                Column(
-                  children: [
-                    ElevatedButton(
-                      onPressed: () {
-                        mapLevel--;
-                        if (mapLevel <= 1) mapLevel = 1;
-                        mapController.setLevel(mapLevel);
-
-                        setState(() {});
-                      },
-                      child: const Text('+'),
-                    ),
-                    ElevatedButton(
-                      onPressed: () {
-                        mapLevel++;
-                        if (mapLevel >= 6) mapLevel = 6;
-                        mapController.setLevel(mapLevel);
-
-                        setState(() {});
-                      },
-                      child: const Text('-'),
-                    ),
-                  ],
-                )
-              ],
-            ),
-          ),
-
-          // 지도 중앙 고정 마커 (지도 준비 완료 시에만 표시)
-          if (isMapReady)
-            const Center(
-              child: Icon(Icons.person_pin_circle, size: 48, color: Colors.red),
-            ),
 
           // 아래쪽 슬라이딩 패널
           PhotoDrawerPanel(
@@ -217,14 +143,17 @@ class _GamePageState extends State<GamePage> {
             currentPage: _currentPage,
             onPageChanged: (index) {
               setState(() {
+                var circles2remove = hintCircles[_currentPage].map((circle) => circle.circleId).toList();
+                var circles2add = hintCircles[index].toList();
+                mapController.clearCircle(circleIds: circles2remove);
+                mapController.addCircle(circles: circles2add);
                 _currentPage = index;
               });
             },
+            // 힌트 버튼 로직
             onHintPressed: (Location loc) {
               if (loc.hintUsed >= 3) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('더 이상 힌트를 사용할 수 없습니다.')),
-                );
+                showToastMessage('$_currentPage번 장소에 이미 3개의 힌트를 사용했습니다.');
                 return;
               }
               loc.hintUsed++; // 힌트 사용 횟수 증가
@@ -232,7 +161,7 @@ class _GamePageState extends State<GamePage> {
               final offsetCenter = randomOffsetAround(loc.position, radius.toDouble());
 
               final circle = Circle(
-                circleId: 'hintcircle_${_hintCircles.length}',
+                circleId: 'hintcircle_${hintCircles[_currentPage].length}',
                 center: offsetCenter,
                 radius: radius.toDouble(),
                 strokeColor: Colors.orange,
@@ -243,9 +172,11 @@ class _GamePageState extends State<GamePage> {
                 fillOpacity: 0.2,
               );
               setState(() {
-                _hintCircles.add(circle); // 원 추가
+                hintCircles[_currentPage].add(circle); // 원 추가
+                mapController.addCircle(circles: hintCircles[_currentPage].toList());
               });
             },
+            // 정답 도전 버튼 로직
             onCheckAnswer: (Location loc) {
               final dist = latlngDistance(currentLatLng, loc.position);
               showDialog(
@@ -357,6 +288,8 @@ class PhotoDrawerPanel extends StatefulWidget {
 }
 
 class _PhotoDrawerPanelState extends State<PhotoDrawerPanel> {
+  final PanelController _panelController = PanelController();
+
   Widget _buildPanelHandle() {
     return Center(
       child: Container(
@@ -376,56 +309,26 @@ class _PhotoDrawerPanelState extends State<PhotoDrawerPanel> {
     return Align(
       alignment: Alignment.bottomCenter,
       child: SlidingUpPanel(
-        minHeight: 45,
+        minHeight: MediaQuery.of(context).size.height * 0.1,
+        snapPoint: 0.3,
         maxHeight: 450,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        controller: _panelController,
         panel: Column(
           children: [
             _buildPanelHandle(),
             Expanded(
-              child: Stack(
-                children: [
-                  PageView(
-                    controller: widget.pageController,
-                    onPageChanged: widget.onPageChanged,
-                    children: widget.locations
-                        .map((loc) => LocationCard(
-                          location: loc,
-                          onCheckAnswerPressed: () => widget.onCheckAnswer(loc),
-                          onHintPressed: () => widget.onHintPressed(loc),
-                        )).toList(),
-                  ),
-                  if (widget.currentPage > 0)
-                    Positioned(
-                      left: 10,
-                      top: 0,
-                      bottom: 0,
-                      child: IconButton(
-                        icon: const Icon(Icons.arrow_back_ios, size: 32),
-                        onPressed: () {
-                          widget.pageController.previousPage(
-                            duration: const Duration(milliseconds: 300),
-                            curve: Curves.easeInOut,
-                          );
-                        },
-                      ),
-                    ),
-                  if (widget.currentPage < widget.locations.length - 1)
-                    Positioned(
-                      right: 10,
-                      top: 0,
-                      bottom: 0,
-                      child: IconButton(
-                        icon: const Icon(Icons.arrow_forward_ios, size: 32),
-                        onPressed: () {
-                          widget.pageController.nextPage(
-                            duration: const Duration(milliseconds: 300),
-                            curve: Curves.easeInOut,
-                          );
-                        },
-                      ),
-                    ),
-                ],
+              child: PageView(
+                controller: widget.pageController,
+                onPageChanged: widget.onPageChanged,
+                children: widget.locations.map((loc) => LocationCard(
+                  location: loc,
+                  onCheckAnswerPressed: () => widget.onCheckAnswer(loc),
+                  onHintPressed: () {
+                    widget.onHintPressed(loc);
+                    _panelController.close();
+                  },
+                )).toList(),
               ),
             ),
           ],
@@ -478,6 +381,34 @@ class LocationCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              // 🧭 힌트 버튼
+              ElevatedButton.icon(
+                onPressed: onHintPressed,
+                icon: const Icon(Icons.lightbulb),
+                label: const Text('힌트 보기'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(48, 48),
+                ),
+              ),
+              // 🏁 정답 도전 버튼
+              ElevatedButton.icon(
+                onPressed: onCheckAnswerPressed,
+                icon: const Icon(Icons.check_circle),
+                label: const Text('정답 도전'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(48, 48),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
           GestureDetector(
             onTap: () {
               showDialog(
@@ -505,35 +436,6 @@ class LocationCard extends StatelessWidget {
                 cacheHeight: 800,
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-
-          // 🧭 힌트 버튼
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              ElevatedButton.icon(
-                onPressed: onHintPressed,
-                icon: const Icon(Icons.lightbulb),
-                label: const Text('힌트 보기'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(48, 48),
-                ),
-              ),
-              // 🏁 정답 도전 버튼
-              ElevatedButton.icon(
-                onPressed: onCheckAnswerPressed,
-                icon: const Icon(Icons.check_circle),
-                label: const Text('정답 도전'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(48, 48),
-                ),
-              ),
-            ],
           ),
         ],
       ),
@@ -603,6 +505,19 @@ LatLng randomOffsetAround(LatLng center, double radiusInMeters) {
           cos(distance / earthRadius) - sin(lat1) * sin(lat2));
 
   return LatLng(lat2 * 180 / pi, lon2 * 180 / pi);
+}
+
+// 토스트 메시지 출력 함수
+void showToastMessage(String message) {
+  print("Toast 실행: $message");
+  Fluttertoast.showToast(
+    msg: message,
+    toastLength: Toast.LENGTH_SHORT,
+    gravity: ToastGravity.BOTTOM, // TOP, CENTER, BOTTOM 중 선택 가능
+    backgroundColor: Colors.black87,
+    textColor: Colors.white,
+    fontSize: 16.0,
+  );
 }
 
 void _showGameExitDialog(BuildContext context) {
