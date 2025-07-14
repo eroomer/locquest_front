@@ -116,7 +116,7 @@ void showModeDialog(BuildContext context, String title) {
               MaterialPageRoute(
                 builder: (_) => ChangeNotifierProvider(
                   create: (_) => GameTimerController(isExplorer: true), // ← 모드에 맞게 전달
-                  child: const GamePage(isExplorer: true),
+                  child: const GamePage(isExplorer: true, category: 1),
                 ),
               ),
             );

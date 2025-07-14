@@ -5,7 +5,7 @@ import 'package:locquest_front/start_page.dart';
 import 'package:kakao_map_plugin/kakao_map_plugin.dart';
 
 void main() {
-  //AuthRepository.initialize(appKey: '536d4da453db14920558d4b8e1e2ed03');
+  AuthRepository.initialize(appKey: '536d4da453db14920558d4b8e1e2ed03');
   KakaoSdk.init(nativeAppKey: 'd1847048a1f58aeb83b34e2914f689c8');
   runApp(const MyApp());
 }
