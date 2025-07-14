@@ -92,7 +92,7 @@ class ModeCard extends StatelessWidget {
 }
 
 void showModeDialog(BuildContext context, String title) {
-  final isExplorer = (title == 'Explorer Mode');
+  final isExplorer = title == 'Explorer 모드';
 
   showDialog(
     context: context,
@@ -115,8 +115,8 @@ void showModeDialog(BuildContext context, String title) {
               context,
               MaterialPageRoute(
                 builder: (_) => ChangeNotifierProvider(
-                  create: (_) => GameTimerController(isExplorer: isExplorer), // ← 모드에 맞게 전달
-                  child: GamePage(isExplorer: isExplorer),
+                  create: (_) => GameTimerController(isExplorer: true), // ← 모드에 맞게 전달
+                  child: const GamePage(isExplorer: true, category: 1),
                 ),
               ),
             );

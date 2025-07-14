@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:locquest_front/services/api_service.dart';
 import 'package:sliding_up_panel/sliding_up_panel.dart';
 import 'package:kakao_map_plugin/kakao_map_plugin.dart';
 import 'package:geolocator/geolocator.dart';
@@ -10,14 +11,21 @@ import 'package:flutter/services.dart' show rootBundle;
 
 class GamePage extends StatefulWidget {
   final bool isExplorer;
+  final int category;
 
-  const GamePage({super.key, required this.isExplorer});
+  const GamePage({
+    super.key,
+    required this.isExplorer,
+    required this.category,
+  });
 
   @override
   State<GamePage> createState() => _GamePageState();
 }
 
 class _GamePageState extends State<GamePage> {
+  final _api = ApiService();
+
   late final PageController _pageController;
   int _currentPage = 0;
 
@@ -32,21 +40,43 @@ class _GamePageState extends State<GamePage> {
   late StreamSubscription<Position> _positionSubscription;
   bool isMapReady = false;
 
-  final List<Location> _locations = [
-    Location(locId: 1, imagePath: 'assets/images/test_image1.jpg', name: '의문의 문', position: LatLng(36.366456, 127.360971)),
-    Location(locId: 2, imagePath: 'assets/images/test_image2.jpg', name: '오리벽화', position: LatLng(36.367199, 127.359958)),
-    Location(locId: 3, imagePath: 'assets/images/test_image3.jpg', name: '맹꽁이 사다리', position: LatLng(36.366952, 127.359182)),
-    Location(locId: 4, imagePath: 'assets/images/test_image4.jpg', name: '산불조심', position: LatLng(36.367044, 127.358994)),
-    Location(locId: 5, imagePath: 'assets/images/test_image5.jpg', name: '컨테이너', position: LatLng(36.368302, 127.357846)),
-  ];
+  List<Location> _locations = [];
 
   @override
   void initState() {
     super.initState();
     _loadMarkerIcon();
     _initLocation();
+    _fetchGameStart();
     _initLiveLocation();
     _pageController = PageController(viewportFraction: 1.0);
+  }
+
+  Future<void> _fetchGameStart() async {
+    try {
+      final resp = await _api.startGame(widget.category, widget.isExplorer?'ExplorerMode':'TimeAttackMode');
+      // 받아온 locationList를 UI용 Location 객체로 변환
+      final locs = resp.locationList.map((m) {
+        return Location(
+          locId: m.locId,
+          name: m.name,
+          imagePath: m.imagePath,
+          position: LatLng(m.latitude, m.longitude),
+        );
+      }).toList();
+
+      setState(() {
+        _locations = locs;
+        isMapReady = true;
+      });
+
+      // 마커나 초기 지도 센터 설정 등 추가 작업 가능
+    } catch (e) {
+      // 에러 처리
+      debugPrint('gameStart error: $e');
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('게임 시작에 실패했습니다.')));
+    }
   }
 
   @override
@@ -390,9 +420,9 @@ class LocationCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         boxShadow: const [
           BoxShadow(
-          color: Colors.black12,
-          blurRadius: 8,
-          offset: Offset(0, 4),
+            color: Colors.black12,
+            blurRadius: 8,
+            offset: Offset(0, 4),
           )
         ],
       ),
@@ -434,7 +464,7 @@ class LocationCard extends StatelessWidget {
                   insetPadding: const EdgeInsets.all(16),
                   backgroundColor: Colors.black,
                   child: InteractiveViewer(
-                    child: Image.asset(
+                    child: Image.network(
                       location.imagePath,
                       fit: BoxFit.contain,
                     ),
@@ -444,9 +474,9 @@ class LocationCard extends StatelessWidget {
             },
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: Image.asset(
+              child: Image.network(
                 location.imagePath,
-                height: 280,
+                height: 300,
                 width: double.infinity,
                 fit: BoxFit.cover,
                 cacheWidth: 600,
