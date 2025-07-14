@@ -24,14 +24,14 @@ class ModeSelectPage extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             ModeCard(
-              title: 'Explorer 모드',
+              title: 'Explorer Mode',
               description: '제한 시간 안에 최대한 많은 장소를 찾으세요!',
-              onTap: () => showModeDialog(context, 'Explorer 모드'),
+              onTap: () => showModeDialog(context, 'Explorer Mode'),
             ),
             ModeCard(
-              title: 'Time Attack 모드',
+              title: 'Time Attack Mode',
               description: '모든 장소를 얼마나 빨리 찾을 수 있을까요?',
-              onTap: () => showModeDialog(context, 'Time Attack 모드'),
+              onTap: () => showModeDialog(context, 'Time Attack Mode'),
             ),
           ],
         ),
@@ -92,7 +92,7 @@ class ModeCard extends StatelessWidget {
 }
 
 void showModeDialog(BuildContext context, String title) {
-  final isExplorer = title == 'Explorer 모드';
+  final isExplorer = (title == 'Explorer Mode');
 
   showDialog(
     context: context,
@@ -115,8 +115,8 @@ void showModeDialog(BuildContext context, String title) {
               context,
               MaterialPageRoute(
                 builder: (_) => ChangeNotifierProvider(
-                  create: (_) => GameTimerController(isExplorer: true), // ← 모드에 맞게 전달
-                  child: const GamePage(isExplorer: true),
+                  create: (_) => GameTimerController(isExplorer: isExplorer), // ← 모드에 맞게 전달
+                  child: GamePage(isExplorer: isExplorer),
                 ),
               ),
             );

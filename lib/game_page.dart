@@ -5,6 +5,8 @@ import 'package:kakao_map_plugin/kakao_map_plugin.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:async';
 import 'dart:math';
+import 'dart:ui' as ui;
+import 'package:flutter/services.dart' show rootBundle;
 
 class GamePage extends StatefulWidget {
   final bool isExplorer;
@@ -17,46 +19,61 @@ class GamePage extends StatefulWidget {
 
 class _GamePageState extends State<GamePage> {
   late final PageController _pageController;
-  late KakaoMapController mapController;
-  bool isDefaultMap = true; // 지도 타입(지도/스카이뷰)
-  int mapLevel = 5;     // 지도 확대 수준
-
-  Set<Marker> markers = {};
-  List<Set<Circle>> hintCircles = List.generate(5, (_) => <Circle>{});
-  LatLng currentLatLng = LatLng(37.5665, 126.9780); // 현재 user 좌표 (초기값: 서울)
-  bool isMapReady = false;
   int _currentPage = 0;
 
+  late KakaoMapController mapController;
+  LatLng currentLatLng = LatLng(37.5665, 126.9780); // 현재 user 좌표 (초기값: 서울)
+  List<Set<Circle>> hintCircles = List.generate(5, (_) => <Circle>{});
+  Set<Marker> markers = {};
+  late MarkerIcon userIcon;
+  late int userIconWidth;
+  late int userIconHeight;
+
+  late StreamSubscription<Position> _positionSubscription;
+  bool isMapReady = false;
+
   final List<Location> _locations = [
-    Location(imagePath: 'assets/images/test_image1.jpg', name: '의문의 문', position: LatLng(36.366456, 127.360971)),
-    Location(imagePath: 'assets/images/test_image2.jpg', name: '오리벽화', position: LatLng(36.367199, 127.359958)),
-    Location(imagePath: 'assets/images/test_image3.jpg', name: '맹꽁이 사다리', position: LatLng(36.366952, 127.359182)),
-    Location(imagePath: 'assets/images/test_image4.jpg', name: '산불조심', position: LatLng(36.367044, 127.358994)),
-    Location(imagePath: 'assets/images/test_image5.jpg', name: '컨테이너', position: LatLng(36.368302, 127.357846)),
+    Location(locId: 1, imagePath: 'assets/images/test_image1.jpg', name: '의문의 문', position: LatLng(36.366456, 127.360971)),
+    Location(locId: 2, imagePath: 'assets/images/test_image2.jpg', name: '오리벽화', position: LatLng(36.367199, 127.359958)),
+    Location(locId: 3, imagePath: 'assets/images/test_image3.jpg', name: '맹꽁이 사다리', position: LatLng(36.366952, 127.359182)),
+    Location(locId: 4, imagePath: 'assets/images/test_image4.jpg', name: '산불조심', position: LatLng(36.367044, 127.358994)),
+    Location(locId: 5, imagePath: 'assets/images/test_image5.jpg', name: '컨테이너', position: LatLng(36.368302, 127.357846)),
   ];
 
   @override
   void initState() {
     super.initState();
-    initLocation();
+    _loadMarkerIcon();
+    _initLocation();
     _initLiveLocation();
-
     _pageController = PageController(viewportFraction: 1.0);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      for (final loc in _locations) {
-        precacheImage(AssetImage(loc.imagePath), context);
-      }
-    });
   }
 
   @override
   void dispose() {
+    _positionSubscription.cancel();
     _pageController.dispose();
     super.dispose();
   }
 
+  // 유저 마커 이미지 불러오기 함수
+  Future<void> _loadMarkerIcon() async {
+    // 1. 이미지 원본 크기 읽기
+    final data = await rootBundle.load('assets/images/logo_marker.png');
+    final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
+    final frame = await codec.getNextFrame();
+    final image = frame.image;
+
+    userIconWidth = (image.width * 0.05).round();
+    userIconHeight = (image.height * 0.05).round();
+
+    // 2. 마커 아이콘 로드
+    userIcon = await MarkerIcon.fromAsset('assets/images/logo_marker.png');
+
+    print('✅ 유저 마커 로드 완료: ${userIconWidth}x${userIconHeight}');
+  }
   // 지도 초기화 함수
-  Future<void> initLocation() async {
+  Future<void> _initLocation() async {
     print('[initLocation] 위치 요청 시작');
     final loc = await getCurrentLocation();
     if (loc != null) {
@@ -70,53 +87,41 @@ class _GamePageState extends State<GamePage> {
   }
   // 사용자 위치 추적 시작 함수
   void _initLiveLocation() {
-    Geolocator.getPositionStream(
+    _positionSubscription = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.high,
-        distanceFilter: 5,
+        distanceFilter: 1,
       ),
     ).listen((Position position) {
       final newLatLng = LatLng(position.latitude, position.longitude);
-
-      // 지도 중심 이동
-      animateMapCenter(currentLatLng, newLatLng);
-
-      // 현재 위치 갱신
-      setState(() {
-        currentLatLng = newLatLng;
-      });
+      if (!mounted) return;
+      if (latlngDistance(currentLatLng, newLatLng) > 1.0) {
+        // 실제 마커 업데이트
+        setState(() {
+          print('유저 마커 갱신, 기존 위치 : (${currentLatLng.latitude}, ${currentLatLng.longitude}) , 이동 좌표 : (${newLatLng.latitude}, ${newLatLng.longitude})');
+          Marker player = Marker(markerId: 'player', latLng: currentLatLng, icon: userIcon, width: userIconWidth,
+            height: userIconHeight,
+            offsetX: userIconWidth ~/ 2,
+            offsetY: userIconHeight,
+          );
+          mapController.addMarker(markers: [player]);
+          currentLatLng = newLatLng;
+        });
+      }
     });
   }
-  // 지도 중심 이동 함수
-  void animateMapCenter(LatLng from, LatLng to) async {
-    const steps = 30;
-    const duration = Duration(milliseconds: 600);
-
-    for (int i = 0; i <= steps; i++) {
-      final t = i / steps;
-      final lat = from.latitude + (to.latitude - from.latitude) * t;
-      final lng = from.longitude + (to.longitude - from.longitude) * t;
-
-      mapController.setCenter(LatLng(lat, lng));
-      await Future.delayed(duration ~/ steps);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.isExplorer ? 'Explorer 모드' : 'Time Attack 모드'),
+        title: Text(widget.isExplorer ? 'Explorer Mode' : 'Time Attack Mode'),
         backgroundColor: Colors.green,
         actions: [
           GameTimer(
             isExplorer: widget.isExplorer,
             onTimeOver: () => _showGameOverDialog(context),
           ),
-          IconButton(
-            icon: const Icon(Icons.flag),
-            onPressed: () => _showGameExitDialog(context),
-          ),
+          SizedBox(width: 5),
         ],
       ),
       body: Stack(
@@ -128,6 +133,13 @@ class _GamePageState extends State<GamePage> {
               child: KakaoMap(
                 onMapCreated: ((controller)  {
                   mapController = controller;
+                  Marker player = Marker(markerId: 'player', latLng: currentLatLng, icon: userIcon, width: userIconWidth,
+                    height: userIconHeight,
+                    offsetX: userIconWidth ~/ 2,
+                    offsetY: userIconHeight,
+                  );
+                  mapController.addMarker(markers: [player]);
+                  print('최초 유저 마커 생성');
                   }),
                 center: currentLatLng,
                 currentLevel: 5,
@@ -256,11 +268,16 @@ class _GameTimerState extends State<GameTimer> {
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      widget.isExplorer
-          ? '남은 시간: ${_format(_seconds)}'
-          : '경과 시간: ${_format(_seconds)}',
-      style: const TextStyle(fontSize: 16),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.access_time, size: 18), // 시계 아이콘
+        const SizedBox(width: 4), // 아이콘과 텍스트 간격
+        Text(
+          _format(_seconds),
+          style: const TextStyle(fontSize: 16),
+        ),
+      ],
     );
   }
 }
@@ -309,10 +326,9 @@ class _PhotoDrawerPanelState extends State<PhotoDrawerPanel> {
     return Align(
       alignment: Alignment.bottomCenter,
       child: SlidingUpPanel(
-        minHeight: MediaQuery.of(context).size.height * 0.1,
-        snapPoint: 0.3,
-        maxHeight: 450,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        minHeight: 150,
+        maxHeight: 400,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
         controller: _panelController,
         panel: Column(
           children: [
@@ -339,12 +355,14 @@ class _PhotoDrawerPanelState extends State<PhotoDrawerPanel> {
 }
 
 class Location {
+  final int locId;
   final String imagePath;
   final String name;
   final LatLng position;
   int hintUsed = 0;
 
   Location({
+    required this.locId,
     required this.imagePath,
     required this.name,
     required this.position
@@ -365,11 +383,11 @@ class LocationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(left: 16, right: 16, bottom: 12),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(left: 12, right: 12, bottom: 8),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: Colors.white70,
+        borderRadius: BorderRadius.circular(8),
         boxShadow: const [
           BoxShadow(
           color: Colors.black12,
@@ -384,31 +402,30 @@ class LocationCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
+              Text('Id: ${location.locId ?? -1}'),
               // 🧭 힌트 버튼
               ElevatedButton.icon(
                 onPressed: onHintPressed,
                 icon: const Icon(Icons.lightbulb),
-                label: const Text('힌트 보기'),
+                label: const Text('힌트'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.orange,
                   foregroundColor: Colors.white,
-                  minimumSize: const Size(48, 48),
                 ),
               ),
               // 🏁 정답 도전 버튼
               ElevatedButton.icon(
                 onPressed: onCheckAnswerPressed,
                 icon: const Icon(Icons.check_circle),
-                label: const Text('정답 도전'),
+                label: const Text('도전'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
                   foregroundColor: Colors.white,
-                  minimumSize: const Size(48, 48),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
           GestureDetector(
             onTap: () {
               showDialog(
@@ -429,7 +446,7 @@ class LocationCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               child: Image.asset(
                 location.imagePath,
-                height: 300,
+                height: 280,
                 width: double.infinity,
                 fit: BoxFit.cover,
                 cacheWidth: 600,
