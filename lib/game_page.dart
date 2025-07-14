@@ -100,7 +100,7 @@ class _GamePageState extends State<GamePage> {
     // 2. 마커 아이콘 로드
     userIcon = await MarkerIcon.fromAsset('assets/images/logo_marker.png');
 
-    print('✅ 유저 마커 로드 완료: ${userIconWidth}x${userIconHeight}');
+    print('✅ 유저 마커 로드 완료: $userIconWidth x $userIconHeight');
   }
   // 지도 초기화 함수
   Future<void> _initLocation() async {
@@ -432,7 +432,7 @@ class LocationCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              Text('Id: ${location.locId ?? -1}'),
+              Text('Id: ${location.locId}'),
               // 🧭 힌트 버튼
               ElevatedButton.icon(
                 onPressed: onHintPressed,
