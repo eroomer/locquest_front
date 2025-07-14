@@ -28,7 +28,7 @@ class StartPage extends StatelessWidget {
               MaterialPageRoute(builder: (context) => RankingPage()),
             );
           }),
-          CustomButton(text: '내 기록', onPressed: (){
+          CustomButton(text: '내 정보', onPressed: (){
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => MyRecordPage()),

@@ -19,8 +19,8 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'LocQuest',
-      //home: RankingPage(),
-      home: AuthCheckPage(),
+      home: StartPage(),
+      //home: AuthCheckPage(),
     );
   }
 }

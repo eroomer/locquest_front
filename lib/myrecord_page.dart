@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:kakao_map_plugin/kakao_map_plugin.dart';
+import '../services/record_service.dart';
 
 class MyRecordPage extends StatefulWidget {
   const MyRecordPage({super.key});
@@ -12,8 +13,9 @@ class _MyRecordPageState extends State<MyRecordPage> with SingleTickerProviderSt
   late TabController _tabController;
   String selectedRegion = '전체';
   final List<String> regions = ['전체', '카이스트', '어은동', '궁동'];
+  final userId = 3; //여기서 userId 할당
   late String selectedMode;
-  late List<RecordEntry> records;
+  late List<RecordEntry> records = [];
 
   @override
   void initState() {
@@ -28,25 +30,27 @@ class _MyRecordPageState extends State<MyRecordPage> with SingleTickerProviderSt
       });
     });
 
-    _generateRecords();
+    _fetchRecords();
   }
 
-  void _generateRecords() {
-    records = List.generate(10, (i) {
-      final baseLat = 36.372;
-      final baseLng = 127.362;
-      return RecordEntry(
-        id: i,
-        mode: i % 2 == 0 ? 'Explorer' : 'Time Attack',
-        region: regions[(i % (regions.length - 1)) + 1],
-        date: DateTime.now().subtract(Duration(days: i)),
-        result: i % 2 == 0 ? '성공' : '실패',
-        places: List.generate(
-          3 + i % 3,
-              (j) => LatLng(baseLat + j * 0.001, baseLng + j * 0.0015),
-        ),
-      );
-    });
+  void _fetchRecords() async {
+    try {
+      final gameRecords = await RecordService.fetchGameRecords(3); // 실제 userId로 대체
+      setState(() {
+        records = gameRecords.map((gr) {
+          return RecordEntry(
+            gameId: gr.gameId,
+            mode: gr.gameMode.toLowerCase() == 'explorer' ? 'Explorer' : 'Time Attack',
+            region: _mapCategoryIdToRegion(gr.categoryId),
+            date: gr.gameDate,
+            result: gr.success ? '성공' : '실패',
+            places: [],  // 아직 위치 정보는 없으므로 빈 리스트
+          );
+        }).toList();
+      });
+    } catch (e) {
+      print('에러 발생: $e');
+    }
   }
 
   @override
@@ -64,20 +68,25 @@ class _MyRecordPageState extends State<MyRecordPage> with SingleTickerProviderSt
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('참여 기록'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'Explorer'),
-            Tab(text: 'Time Attack'),
-          ],
-        ),
+        title: const Text('내 정보'),
         actions: [
           _buildRegionFilter(),
         ],
       ),
       body: Column(
         children: [
+          MyProfileCard(
+              nickname: 'default_user',
+              profileImageUrl: 'https://picsum.photos/600/400',
+              onLogout: (){}
+          ),
+          TabBar(
+            controller: _tabController,
+            tabs: const [
+              Tab(text: 'Explorer'),
+              Tab(text: 'Time Attack'),
+            ],
+          ),
           Expanded(
             child: RecordList(records: filteredRecords),
           ),
@@ -136,75 +145,94 @@ class RecordList extends StatelessWidget {
     );
   }
 
-  void _showDetailDialog(BuildContext context, RecordEntry record) {
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        late KakaoMapController mapController;
+  void _showDetailDialog(BuildContext context, RecordEntry record) async {
+    try {
+      final locations = await RecordService.fetchGameDetail(record.gameId);
+      final latLngList = locations.map((e) => e.toLatLng()).toList();
 
-        return AlertDialog(
-          title: const Text('게임 세부 정보'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                width: 300,
-                height: 200,
-                child: KakaoMap(
-                  onMapCreated: (controller) {
-                    mapController = controller;
-                    final markers = <Marker>[];
+      // record.places에 할당 (만약 immutable이면 별도 처리)
+      record.places.clear();
+      record.places.addAll(latLngList);
 
-                    for (int i = 0; i < record.places.length; i++) {
-                      markers.add(
-                        Marker(
-                          markerId: '${record.id}_$i',
-                          latLng: record.places[i],
-                          width: 30,
-                          height: 40,
-                        ),
+      // 다이얼로그는 fetch가 끝난 후 띄움
+      showDialog(
+        context: context,
+        builder: (ctx) {
+          late KakaoMapController mapController;
+
+          return AlertDialog(
+            title: const Text('게임 세부 정보'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 300,
+                  height: 200,
+                  child: KakaoMap(
+                    onMapCreated: (controller) {
+                      mapController = controller;
+                      final markers = <Marker>[];
+
+                      for (int i = 0; i < record.places.length; i++) {
+                        markers.add(
+                          Marker(
+                            markerId: '${record.gameId}_$i',
+                            latLng: record.places[i],
+                            width: 30,
+                            height: 40,
+                          ),
+                        );
+                      }
+
+                      mapController.addMarker(markers: markers.toList());
+
+                      final bounds = _calculateBounds(record.places);
+                      final center = LatLng(
+                        ((bounds['minLat'] as double) + (bounds['maxLat'] as double)) / 2,
+                        ((bounds['minLng'] as double) + (bounds['maxLng'] as double)) / 2,
                       );
-                    }
+                      controller.setCenter(center);
 
-                    mapController.addMarker(markers: markers.toList());
-
-                    final bounds = _calculateBounds(record.places);
-                    final center = LatLng(
-                      ((bounds['minLat'] as double) + (bounds['maxLat'] as double)) / 2,
-                      ((bounds['minLng'] as double) + (bounds['maxLng'] as double)) / 2,
-                    );
-                    controller.setCenter(center);
-
-                    final latRange = (bounds['maxLat'] as double) - (bounds['minLat'] as double);
-                    final zoomLevel = _getZoomLevel(latRange);
-                    mapController.setLevel(zoomLevel);
-                  },
+                      final latRange = (bounds['maxLat'] as double) - (bounds['minLat'] as double);
+                      final zoomLevel = _getZoomLevel(latRange);
+                      mapController.setLevel(zoomLevel);
+                    },
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('모드: ${record.mode}'),
-                    Text('지역: ${record.region}'),
-                    Text('날짜: ${record.date.toLocal()}'),
-                    Text('결과: ${record.result}'),
-                  ],
-                ),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('모드: ${record.mode}'),
+                      Text('지역: ${record.region}'),
+                      Text('날짜: ${record.date.toLocal()}'),
+                      Text('결과: ${record.result}'),
+                    ],
+                  ),
+                )
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('닫기'),
               )
             ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('닫기'),
-            )
-          ],
-        );
-      },
-    );
+          );
+        },
+      );
+    } catch (e) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('에러'),
+          content: Text('세부 정보를 불러오지 못했습니다.\n$e'),
+          actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('닫기'))],
+        ),
+      );
+    }
   }
 
   Map<String, double> _calculateBounds(List<LatLng> points) {
@@ -238,7 +266,7 @@ class RecordList extends StatelessWidget {
 }
 
 class RecordEntry {
-  final int id;
+  final int gameId;
   final String mode;
   final String region;
   final DateTime date;
@@ -246,7 +274,7 @@ class RecordEntry {
   final List<LatLng> places;
 
   RecordEntry({
-    required this.id,
+    required this.gameId,
     required this.mode,
     required this.region,
     required this.date,
@@ -254,3 +282,82 @@ class RecordEntry {
     required this.places,
   });
 }
+
+class MyProfileCard extends StatelessWidget {
+  final String nickname;
+  final String profileImageUrl;
+  final VoidCallback onLogout;
+
+  const MyProfileCard({
+    super.key,
+    required this.nickname,
+    required this.profileImageUrl,
+    required this.onLogout,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.all(16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      elevation: 4,
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Row(
+          children: [
+            // 프로필 이미지
+            CircleAvatar(
+              radius: 32,
+              backgroundImage: NetworkImage(profileImageUrl),
+              backgroundColor: Colors.grey[200],
+            ),
+            const SizedBox(width: 20),
+
+            // 닉네임 + 로그아웃 버튼
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    nickname,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    onPressed: onLogout,
+                    icon: const Icon(Icons.logout),
+                    label: const Text('로그아웃'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.redAccent,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _mapCategoryIdToRegion(int id) {
+  switch (id) {
+    case 1:
+      return '카이스트';
+    case 2:
+      return '어은동';
+    case 3:
+      return '궁동';
+    default:
+      return '전체';
+  }
+}
+
+
+
