@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:kakao_map_plugin/kakao_map_plugin.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../services/record_service.dart';
-import 'package:locquest_front/start_page.dart';
+import 'package:locquest_front/kakao_login_page.dart';
 
 final storage = FlutterSecureStorage();
 
@@ -134,7 +134,7 @@ class _MyRecordPageState extends State<MyRecordPage> with SingleTickerProviderSt
     // 홈 또는 로그인 페이지로 이동
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (context) => StartPage()),
+      MaterialPageRoute(builder: (context) => KakaoLoginPage()),
           (route) => false,
     );
   }
