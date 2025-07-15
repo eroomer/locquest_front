@@ -94,6 +94,8 @@ class _KakaoLoginPageState extends State<KakaoLoginPage> {
         final _secureStorage = FlutterSecureStorage();
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         final jwtToken = data['jwt'] as String;
+        final userId = data['userId'] as int;
+        await _secureStorage.write(key: 'userId', value: userId.toString());
         await _secureStorage.write(key: 'jwt', value: jwtToken);
         debugPrint('[🔐 JWT 저장 완료] $jwtToken');
       } else {
