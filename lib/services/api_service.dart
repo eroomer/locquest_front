@@ -10,7 +10,7 @@ final storage = FlutterSecureStorage();
 
 class ApiService {
   Future<GameStartResponse> startGame(int categoryId, String gameMode) async {
-    final uri = Uri.parse('http://34.47.75.182/game/startGame');
+    final uri = Uri.parse('http://34.47.75.182:8080/game/startGame');
     final now = DateTime.now();
 
     // 1. secure storage에서 userId 읽기
@@ -45,7 +45,7 @@ class ApiService {
     required int locationId,
     required int gameId,
   }) async {
-    final url = Uri.parse('http://localhost:8080/game/sendSuccess');
+    final url = Uri.parse('http://34.47.75.182:8080/game/sendSuccess');
     final body = jsonEncode({
       'userId': userId,
       'locId': locationId,
@@ -63,7 +63,7 @@ class ApiService {
   }
 
   Future<List<CategoryModel>> fetchCategories() async {
-    final url = Uri.parse('http://localhost:8080/game/getCategories');
+    final url = Uri.parse('http://34.47.75.182:8080/game/getCategories');
     final response = await http.get(url);
 
     if (response.statusCode == 200) {
@@ -83,7 +83,7 @@ class ApiService {
     required int hintCount,
     required List<int> failedLocationIds,
   }) async {
-    final url = Uri.parse('http://localhost:8080/game/endGame');
+    final url = Uri.parse('http://34.47.75.182:8080/game/endGame');
     final body = jsonEncode({
       'gameId': gameId,
       'success': success,

@@ -3,6 +3,7 @@ import 'package:locquest_front/mode_select_page.dart';
 import 'package:locquest_front/ranking_page.dart';
 import 'package:locquest_front/myrecord_page.dart';
 import 'package:locquest_front/select_category_page.dart';
+import 'package:locquest_front/add_location_page.dart';
 
 class StartPage extends StatelessWidget {
   const StartPage({super.key});
@@ -35,6 +36,12 @@ class StartPage extends StatelessWidget {
               MaterialPageRoute(builder: (context) => MyRecordPage()),
             );
           }),
+          CustomButton(text: '장소 추가', onPressed: (){
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => AddLocationPage()),
+            );
+          }),
         ],
       ),
     );
@@ -56,7 +63,7 @@ class CustomButton extends StatelessWidget {
     return ElevatedButton(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
-        minimumSize: Size(400, 100),
+        minimumSize: Size(400, 50),
         backgroundColor: Colors.green,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),

@@ -292,10 +292,10 @@ class _GamePageState extends State<GamePage> {
             onCheckAnswer: (Location loc) async {
               final _secureStorage = FlutterSecureStorage();
               final dist = latlngDistance(currentLatLng, loc.position);
-              final isSuccess = dist <= 10.0;
+              final found = dist <= 20.0;
               String? userIdStr = await _secureStorage.read(key: 'userId');
 
-              if (isSuccess && userIdStr != null) { // 정답일 경우
+              if (found && userIdStr != null) { // 정답일 경우
                 try {
                   await api.sendChallengeResult(
                     userId: int.parse(userIdStr),
@@ -305,21 +305,20 @@ class _GamePageState extends State<GamePage> {
                 } catch (e) {
                   print('서버 전송 에러: $e');
                 }
+                // 장소 찾으면 장소 UI 제거
+                setState(() {
+                  final indexToRemove = _locations.indexOf(loc);
+                  _locations.removeAt(indexToRemove);
+                  hintCircles.removeAt(indexToRemove);
+                  mapController.clearCircle(); // 현재 원도 지움
+
+                  // 페이지 초기화 또는 보정
+                  if (_currentPage >= _locations.length) {
+                    _currentPage = _locations.length - 1;
+                  }
+                  _pageController.jumpToPage(_currentPage);
+                });
               }
-
-              // 장소 찾으면 장소 UI 제거
-              setState(() {
-                final indexToRemove = _locations.indexOf(loc);
-                _locations.removeAt(indexToRemove);
-                hintCircles.removeAt(indexToRemove);
-                mapController.clearCircle(); // 현재 원도 지움
-
-                // 페이지 초기화 또는 보정
-                if (_currentPage >= _locations.length) {
-                  _currentPage = _locations.length - 1;
-                }
-                _pageController.jumpToPage(_currentPage);
-              });
 
               if (_locations.isEmpty) {
                 final duration = _durationSeconds ??
@@ -331,7 +330,7 @@ class _GamePageState extends State<GamePage> {
               showDialog(
                 context: context,
                 builder: (_) => AlertDialog(
-                  title: Text(isSuccess ? '도전 성공!' : '도전 실패'),
+                  title: Text(found ? '도전 성공!' : '도전 실패'),
                   content: Text('사진 속 장소와 거리: ${dist.toStringAsFixed(1)} m'),
                   actions: [
                     TextButton(
