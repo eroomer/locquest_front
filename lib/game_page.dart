@@ -55,7 +55,7 @@ class _GamePageState extends State<GamePage> {
 
   Future<void> _fetchGameStart() async {
     try {
-      final resp = await _api.startGame(widget.category, widget.isExplorer?'ExplorerMode':'TimeAttackMode');
+      final resp = await _api.startGame(widget.category, widget.isExplorer ? 'Explorer' : 'Time Attack');
       // 받아온 locationList를 UI용 Location 객체로 변환
       final locs = resp.locationList.map((m) {
         return Location(
@@ -108,7 +108,7 @@ class _GamePageState extends State<GamePage> {
     print('[initLocation] 위치 요청 시작');
     final loc = await getCurrentLocation();
     if (loc != null) {
-      print('[initLocation] 위치 가져오기 성공: \${loc.latitude}, \${loc.longitude}');
+      print('[initLocation] 위치 가져오기 성공: ${loc.latitude}, ${loc.longitude}');
       setState(() {
         currentLatLng = loc;
         isMapReady = true; // 지도 렌더링 조건
@@ -130,7 +130,7 @@ class _GamePageState extends State<GamePage> {
         // 실제 마커 업데이트
         setState(() {
           print('유저 마커 갱신, 기존 위치 : (${currentLatLng.latitude}, ${currentLatLng.longitude}) , 이동 좌표 : (${newLatLng.latitude}, ${newLatLng.longitude})');
-          Marker player = Marker(markerId: 'player', latLng: currentLatLng, icon: userIcon, width: userIconWidth,
+          Marker player = Marker(markerId: 'player_(${currentLatLng.latitude}, ${currentLatLng.longitude})', latLng: currentLatLng, icon: userIcon, width: userIconWidth,
             height: userIconHeight,
             offsetX: userIconWidth ~/ 2,
             offsetY: userIconHeight,

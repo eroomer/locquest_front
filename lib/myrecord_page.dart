@@ -19,6 +19,8 @@ class _MyRecordPageState extends State<MyRecordPage> with SingleTickerProviderSt
   final List<String> regions = ['전체', '카이스트', '어은동', '궁동'];
   late String selectedMode;
   late List<RecordEntry> records = [];
+  String? _nickname;
+  String? _profileImageUrl;
 
   @override
   void initState() {
@@ -35,17 +37,33 @@ class _MyRecordPageState extends State<MyRecordPage> with SingleTickerProviderSt
 
     _fetchRecords();
   }
+  Future<String?> _loadUserIdAndStoreInfo() async {
+    final storage = FlutterSecureStorage();
+
+    final userId = await storage.read(key: 'userId');
+    final nickname = await storage.read(key: 'nickname');
+    final profileImage = await storage.read(key: 'profileImage');
+
+    if (userId == null) return null;
+
+    setState(() {
+      _nickname = nickname;
+      _profileImageUrl = profileImage;
+    });
+
+    return userId;
+  }
 
   void _fetchRecords() async {
     try {
-      final userId = await loadUserId(); // secure_storage에서 userId 읽기
+      final userId = await _loadUserIdAndStoreInfo(); // userId + nickname/profileImage 저장
 
       if (userId == null) {
-        print('userId가 없습니다. 로그인 필요');
+        print('userId 없음. 로그인 필요');
         return;
       }
 
-      final gameRecords = await RecordService.fetchGameRecords(userId); // userId는 String
+      final gameRecords = await RecordService.fetchGameRecords(userId);
 
       setState(() {
         records = gameRecords.map((gr) {
@@ -55,7 +73,7 @@ class _MyRecordPageState extends State<MyRecordPage> with SingleTickerProviderSt
             region: _mapCategoryIdToRegion(gr.categoryId),
             date: gr.gameDate,
             result: gr.success ? '성공' : '실패',
-            places: [], // 아직 위치 정보는 없으므로 빈 리스트
+            places: [],
           );
         }).toList();
       });
@@ -63,6 +81,7 @@ class _MyRecordPageState extends State<MyRecordPage> with SingleTickerProviderSt
       print('에러 발생: $e');
     }
   }
+
 
   @override
   void dispose() {
@@ -87,8 +106,8 @@ class _MyRecordPageState extends State<MyRecordPage> with SingleTickerProviderSt
       body: Column(
         children: [
           MyProfileCard(
-              nickname: 'default_user',
-              profileImageUrl: 'https://picsum.photos/600/400',
+              nickname: _nickname ?? '게스트',
+              profileImageUrl: _profileImageUrl ?? 'https://via.placeholder.com/150',
               onLogout: () => _handleLogout(context),
           ),
           TabBar(
@@ -387,6 +406,14 @@ String _mapCategoryIdToRegion(int id) {
 Future<String?> loadUserId() async {
   final storage = FlutterSecureStorage();
   return await storage.read(key: 'userId');
+}
+
+class UserInfo {
+  final String userId;
+  final String nickname;
+  final String profileImage;
+
+  UserInfo({required this.userId, required this.nickname, required this.profileImage});
 }
 
 

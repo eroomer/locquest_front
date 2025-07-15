@@ -17,7 +17,7 @@ class _KakaoLoginPageState extends State<KakaoLoginPage> {
   static const String _redirectUri =
       'kakaod1847048a1f58aeb83b34e2914f689c8://oauth';
   static const String _serverUrl =
-      'http://34.47.75.182/auth/kakaoLogin';
+      'http://34.47.75.182:8080/auth/kakaoLogin';
 
   bool _isLoading = false;
 
@@ -95,9 +95,14 @@ class _KakaoLoginPageState extends State<KakaoLoginPage> {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         final jwtToken = data['jwt'] as String;
         final userId = data['userId'] as int;
-        await _secureStorage.write(key: 'userId', value: userId.toString());
+        final nickname = data['nickname'] as String;
+        final profileImage = data['profileImage'] as String;
+
         await _secureStorage.write(key: 'jwt', value: jwtToken);
         debugPrint('[🔐 JWT 저장 완료] $jwtToken');
+        await _secureStorage.write(key: 'userId', value: userId.toString());
+        await _secureStorage.write(key: 'nickname', value: nickname);
+        await _secureStorage.write(key: 'profileImage', value: profileImage);
       } else {
         throw Exception('서버 오류: ${response.statusCode}');
       }

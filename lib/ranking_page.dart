@@ -180,7 +180,7 @@ class _RankingListState extends State<RankingList> {
 }
 
 Future<List<ExplorerRankEntry>> fetchExplorerRankingData(int categoryId) async {
-  final serverUrl = 'http://localhost:8080/ranking/explorer?categoryId=$categoryId';
+  final serverUrl = 'http://34.47.75.182:8080/ranking/explorer?categoryId=$categoryId';
   debugPrint('[Explorer] 요청 URL: $serverUrl');
 
   try {
@@ -201,7 +201,7 @@ Future<List<ExplorerRankEntry>> fetchExplorerRankingData(int categoryId) async {
 }
 
 Future<List<TimeAttackRankEntry>> fetchTimeAttackRankingData(int categoryId) async {
-  final serverUrl = 'http://34.47.75.182/ranking/timeAttack?categoryId=$categoryId';
+  final serverUrl = 'http://34.47.75.182:8080/ranking/timeAttack?categoryId=$categoryId';
   debugPrint('[TimeAttack] 요청 URL: $serverUrl');
 
   try {

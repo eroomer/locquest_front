@@ -3,6 +3,7 @@ import 'package:kakao_flutter_sdk_user/kakao_flutter_sdk_user.dart';
 import 'package:locquest_front/start_page.dart';
 import 'package:locquest_front/ranking_page.dart';
 import 'package:locquest_front/auth_check_page.dart';
+import 'package:locquest_front/add_location_page.dart';
 import 'package:kakao_map_plugin/kakao_map_plugin.dart';
 
 void main() {
@@ -19,8 +20,8 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'LocQuest',
-      home: StartPage(),
-      //home: AuthCheckPage(),
+      //home: AddLocationPage(),
+      home: AuthCheckPage(),
     );
   }
 }

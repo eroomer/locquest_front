@@ -5,7 +5,7 @@ import '../models/record_details_response.dart';
 
 class RecordService {
   static Future<List<GameRecord>> fetchGameRecords(String userId) async {
-    final url = Uri.parse('http://34.47.75.182/record/getGames?userId=$userId');
+    final url = Uri.parse('http://34.47.75.182:8080/record/getGames?userId=$userId');
     final res = await http.get(url);
 
     if (res.statusCode == 200) {
@@ -19,7 +19,7 @@ class RecordService {
   }
 
   static Future<List<GameLocation>> fetchGameDetail(int gameId) async {
-    final url = Uri.parse('http://localhost:8080/record/gameDetail?gameId=$gameId');
+    final url = Uri.parse('http://34.47.75.182:8080/record/gameDetail?gameId=$gameId');
     final response = await http.get(url);
 
     if (response.statusCode == 200) {
