@@ -215,6 +215,7 @@ class _GamePageState extends State<GamePage> {
           GameTimer(
             isExplorer: widget.isExplorer,
             onTimeOver: (elapsedSeconds) async {
+              _showGameOverDialog(context);
               _durationSeconds = elapsedSeconds;
               await _endGame(isSuccess: false, durationSeconds: elapsedSeconds);
             },
@@ -289,7 +290,7 @@ class _GamePageState extends State<GamePage> {
             // 정답 도전 버튼 로직
             onCheckAnswer: (Location loc) async {
               final _secureStorage = FlutterSecureStorage();
-              final dist = 5;//latlngDistance(currentLatLng, loc.position);
+              final dist = latlngDistance(currentLatLng, loc.position);
               final isSuccess = dist <= 10.0;
               String? userIdStr = await _secureStorage.read(key: 'userId');
 
