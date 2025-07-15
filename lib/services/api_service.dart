@@ -37,6 +37,7 @@ class ApiService {
       print(resp.statusCode);
       throw Exception('Failed to start game: ${resp.statusCode}');
     }
+    await storage.write(key: 'startTime', value: now.toIso8601String());
     return GameStartResponse.fromJson(jsonDecode(resp.body));
   }
 

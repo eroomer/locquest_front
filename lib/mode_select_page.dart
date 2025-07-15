@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:locquest_front/game_page.dart';
-import 'package:locquest_front/models/game_timer_controller.dart';
 
 class ModeSelectPage extends StatelessWidget {
   final int categoryId;
@@ -119,10 +117,7 @@ void showModeDialog(BuildContext context, String title, int category) {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => ChangeNotifierProvider(
-                  create: (_) => GameTimerController(isExplorer: isExplorer), // ← 모드에 맞게 전달
-                  child: GamePage(isExplorer: isExplorer, category: category),
-                ),
+                builder: (_) => GamePage(isExplorer: isExplorer, category: category),
               ),
             );
           },

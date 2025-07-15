@@ -9,6 +9,9 @@ import 'dart:async';
 import 'dart:math';
 import 'dart:ui' as ui;
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:locquest_front/start_page.dart';
+
+final _storage = FlutterSecureStorage();
 
 class GamePage extends StatefulWidget {
   final bool isExplorer;
@@ -105,6 +108,7 @@ class _GamePageState extends State<GamePage> {
     required int durationSeconds
   }) async {
     String usedTime;
+    await _storage.delete(key: 'startTime');
     final endTime = DateTime.now();
     final totalPlaces = allLocations.length;
     final failedLocationIds = _locations.map((loc) => loc.locId).toList();
@@ -185,7 +189,7 @@ class _GamePageState extends State<GamePage> {
     _positionSubscription = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.high,
-        distanceFilter: 1,
+        distanceFilter: 3,
       ),
     ).listen((Position position) {
       final newLatLng = LatLng(position.latitude, position.longitude);
@@ -208,141 +212,177 @@ class _GamePageState extends State<GamePage> {
   @override
   Widget build(BuildContext context) {
     final api = ApiService();
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.isExplorer ? 'Explorer Mode' : 'Time Attack Mode'),
-        backgroundColor: Colors.green,
-        actions: [
-          GameTimer(
-            isExplorer: widget.isExplorer,
-            onTimeOver: (elapsedSeconds) async {
-              _showGameOverDialog(context);
-              _durationSeconds = elapsedSeconds;
-              await _endGame(isSuccess: false, durationSeconds: elapsedSeconds);
-            },
-          ),
-          SizedBox(width: 5),
-        ],
-      ),
-      body: Stack(
-        children: [
-          if (isMapReady && isLocReady)
-            SizedBox(
-              height: MediaQuery.of(context).size.height * 0.7,
-              width: MediaQuery.of(context).size.width,
-              child: KakaoMap(
-                onMapCreated: ((controller)  {
-                  mapController = controller;
-                  Marker player = Marker(markerId: 'player', latLng: currentLatLng, icon: userIcon, width: userIconWidth,
-                    height: userIconHeight,
-                    offsetX: userIconWidth ~/ 2,
-                    offsetY: userIconHeight,
-                  );
-                  mapController.addMarker(markers: [player]);
-                  print('최초 유저 마커 생성');
-                  }),
-                center: currentLatLng,
-                currentLevel: 5,
-                ),
-            )
-          else
-            const Center(child: CircularProgressIndicator()), // 로딩 중
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (!didPop) {
+          final shouldExit = await showExitGameDialog(context);
+          if (shouldExit) {
+            await _storage.delete(key: 'startTime');
+            final endTime = DateTime.now();
+            final totalPlaces = allLocations.length;
+            final failedLocationIds = _locations.map((loc) => loc.locId).toList();
+            final successCount = totalPlaces - _locations.length;
+            final hintCount = allLocations.fold(0, (sum, loc) => sum + loc.hintUsed);
 
-          // 아래쪽 슬라이딩 패널
-          PhotoDrawerPanel(
-            locations: _locations,
-            pageController: _pageController,
-            currentPage: _currentPage,
-            onPageChanged: (index) {
-              setState(() {
-                var circles2remove = hintCircles[_currentPage].map((circle) => circle.circleId).toList();
-                var circles2add = hintCircles[index].toList();
-                mapController.clearCircle(circleIds: circles2remove);
-                mapController.addCircle(circles: circles2add);
-                _currentPage = index;
-              });
-            },
-            // 힌트 버튼 로직
-            onHintPressed: (Location loc) {
-              if (loc.hintUsed >= 3) {
-                showToastMessage('$_currentPage번 장소에 이미 3개의 힌트를 사용했습니다.');
-                return;
-              }
-              loc.hintUsed++; // 힌트 사용 횟수 증가
-              final radius = [200, 100, 50][loc.hintUsed - 1]; // 반경 결정
-              final offsetCenter = randomOffsetAround(loc.position, radius.toDouble());
-
-              final circle = Circle(
-                circleId: 'hintcircle_${hintCircles[_currentPage].length}',
-                center: offsetCenter,
-                radius: radius.toDouble(),
-                strokeColor: Colors.orange,
-                strokeOpacity: 0.5,
-                strokeStyle: StrokeStyle.dash,
-                strokeWidth: 2,
-                fillColor: Colors.orange,
-                fillOpacity: 0.2,
+            try {
+              await _api.endGame(
+                gameId: gameId,
+                success: false,
+                endTime: endTime,
+                locCount: successCount,
+                hintCount: hintCount,
+                failedLocationIds: failedLocationIds,
               );
-              setState(() {
-                hintCircles[_currentPage].add(circle); // 원 추가
-                mapController.addCircle(circles: hintCircles[_currentPage].toList());
-              });
-            },
-            // 정답 도전 버튼 로직
-            onCheckAnswer: (Location loc) async {
-              final _secureStorage = FlutterSecureStorage();
-              final dist = latlngDistance(currentLatLng, loc.position);
-              final found = dist <= 20.0;
-              String? userIdStr = await _secureStorage.read(key: 'userId');
-
-              if (found && userIdStr != null) { // 정답일 경우
-                try {
-                  await api.sendChallengeResult(
-                    userId: int.parse(userIdStr),
-                    locationId: loc.locId,
-                    gameId: gameId,
-                  );
-                } catch (e) {
-                  print('서버 전송 에러: $e');
-                }
-                // 장소 찾으면 장소 UI 제거
+            } catch (e) {
+              print('게임 종료 정보 전송 실패: $e');
+            }
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const StartPage()),
+            );
+          }
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(widget.isExplorer ? 'Explorer Mode' : 'Time Attack Mode'),
+          backgroundColor: Colors.green,
+          actions: [
+            GameTimer(
+              isExplorer: widget.isExplorer,
+              onTimeOver: (elapsedSeconds) async {
+                _showGameOverDialog(context);
+                _durationSeconds = elapsedSeconds;
+                await _endGame(isSuccess: false, durationSeconds: elapsedSeconds);
+              },
+              onElapsedUpdate: (elapsed) {
+                _durationSeconds = elapsed;
+              },
+            ),
+            SizedBox(width: 5),
+          ],
+        ),
+        body: Stack(
+          children: [
+            if (isMapReady && isLocReady)
+              SizedBox(
+                height: MediaQuery.of(context).size.height * 0.7,
+                width: MediaQuery.of(context).size.width,
+                child: KakaoMap(
+                  onMapCreated: ((controller)  {
+                    mapController = controller;
+                    Marker player = Marker(markerId: 'player', latLng: currentLatLng, icon: userIcon, width: userIconWidth,
+                      height: userIconHeight,
+                      offsetX: userIconWidth ~/ 2,
+                      offsetY: userIconHeight,
+                    );
+                    mapController.addMarker(markers: [player]);
+                    print('최초 유저 마커 생성');
+                    }),
+                  center: currentLatLng,
+                  currentLevel: 5,
+                  ),
+              )
+            else
+              const Center(child: CircularProgressIndicator()), // 로딩 중
+      
+            // 아래쪽 슬라이딩 패널
+            PhotoDrawerPanel(
+              locations: _locations,
+              pageController: _pageController,
+              currentPage: _currentPage,
+              onPageChanged: (index) {
                 setState(() {
-                  final indexToRemove = _locations.indexOf(loc);
-                  _locations.removeAt(indexToRemove);
-                  hintCircles.removeAt(indexToRemove);
-                  mapController.clearCircle(); // 현재 원도 지움
-
-                  // 페이지 초기화 또는 보정
-                  if (_currentPage >= _locations.length) {
-                    _currentPage = _locations.length - 1;
-                  }
-                  _pageController.jumpToPage(_currentPage);
+                  var circles2remove = hintCircles[_currentPage].map((circle) => circle.circleId).toList();
+                  var circles2add = hintCircles[index].toList();
+                  mapController.clearCircle(circleIds: circles2remove);
+                  mapController.addCircle(circles: circles2add);
+                  _currentPage = index;
                 });
-              }
-
-              if (_locations.isEmpty) {
-                final duration = _durationSeconds ??
-                    (widget.isExplorer ? 3600 : 0); // fallback 값 (시간 측정이 없을 경우)
-
-                await _endGame(isSuccess: true, durationSeconds: duration);
-              }
-
-              showDialog(
-                context: context,
-                builder: (_) => AlertDialog(
-                  title: Text(found ? '도전 성공!' : '도전 실패'),
-                  content: Text('사진 속 장소와 거리: ${dist.toStringAsFixed(1)} m'),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('확인'),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ],
+              },
+              // 힌트 버튼 로직
+              onHintPressed: (Location loc) {
+                if (loc.hintUsed >= 3) {
+                  showToastMessage('$_currentPage번 장소에 이미 3개의 힌트를 사용했습니다.');
+                  return;
+                }
+                loc.hintUsed++; // 힌트 사용 횟수 증가
+                final radius = [200, 100, 50][loc.hintUsed - 1]; // 반경 결정
+                final offsetCenter = randomOffsetAround(loc.position, radius.toDouble());
+      
+                final circle = Circle(
+                  circleId: 'hintcircle_${hintCircles[_currentPage].length}',
+                  center: offsetCenter,
+                  radius: radius.toDouble(),
+                  strokeColor: Colors.orange,
+                  strokeOpacity: 0.5,
+                  strokeStyle: StrokeStyle.dash,
+                  strokeWidth: 2,
+                  fillColor: Colors.orange,
+                  fillOpacity: 0.2,
+                );
+                setState(() {
+                  hintCircles[_currentPage].add(circle); // 원 추가
+                  mapController.addCircle(circles: hintCircles[_currentPage].toList());
+                });
+              },
+              // 정답 도전 버튼 로직
+              onCheckAnswer: (Location loc) async {
+                final _secureStorage = FlutterSecureStorage();
+                final dist = latlngDistance(currentLatLng, loc.position);
+                final found = dist <= 20.0;
+                String? userIdStr = await _secureStorage.read(key: 'userId');
+      
+                if (found && userIdStr != null) { // 정답일 경우
+                  try {
+                    await api.sendChallengeResult(
+                      userId: int.parse(userIdStr),
+                      locationId: loc.locId,
+                      gameId: gameId,
+                    );
+                  } catch (e) {
+                    print('서버 전송 에러: $e');
+                  }
+                  // 장소 찾으면 장소 UI 제거
+                  setState(() {
+                    final indexToRemove = _locations.indexOf(loc);
+                    _locations.removeAt(indexToRemove);
+                    hintCircles.removeAt(indexToRemove);
+                    mapController.clearCircle(); // 현재 원도 지움
+      
+                    // 페이지 초기화 또는 보정
+                    if (_currentPage >= _locations.length) {
+                      _currentPage = _locations.length - 1;
+                    }
+                    _pageController.jumpToPage(_currentPage);
+                  });
+                }
+      
+                if (_locations.isEmpty) {
+                  final duration = _durationSeconds ??
+                      (widget.isExplorer ? 3600 : 0); // fallback 값 (시간 측정이 없을 경우)
+      
+                  await _endGame(isSuccess: true, durationSeconds: duration);
+                }
+      
+                showDialog(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    title: Text(found ? '도전 성공!' : '도전 실패'),
+                    content: Text('사진 속 장소와 거리: ${dist.toStringAsFixed(1)} m'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('확인'),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -350,12 +390,14 @@ class _GamePageState extends State<GamePage> {
 
 class GameTimer extends StatefulWidget {
   final bool isExplorer;
-  final Future<void> Function(int elapsedSeconds)? onTimeOver; // Explorer 모드에서 시간 다 됐을 때 콜백
+  final Future<void> Function(int elapsedSeconds)? onTimeOver;
+  final void Function(int elapsedSeconds)? onElapsedUpdate;
 
   const GameTimer({
     super.key,
     required this.isExplorer,
     this.onTimeOver,
+    this.onElapsedUpdate,
   });
 
   @override
@@ -364,32 +406,43 @@ class GameTimer extends StatefulWidget {
 
 class _GameTimerState extends State<GameTimer> {
   Timer? _timer;
-  int _seconds = 0;
+  DateTime? _startTime;
+  int _elapsedSeconds = 0;
+
 
   @override
   void initState() {
     super.initState();
+    _initializeStartTimeAndTimer();
+  }
 
-    if (widget.isExplorer) {
-      _seconds = 3600; // 60분 카운트다운
-    } else {
-      _seconds = 0; // 스톱워치 시작
+  Future<void> _initializeStartTimeAndTimer() async {
+    final startStr = await _storage.read(key: 'startTime');
+    if (startStr != null) {
+      _startTime = DateTime.tryParse(startStr);
+    }
+
+    if (_startTime == null) {
+      _startTime = DateTime.now();
+      await _storage.write(key: 'startTime', value: _startTime!.toIso8601String());
     }
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) async {
+      final now = DateTime.now();
+      final seconds = now.difference(_startTime!).inSeconds;
+
+      if (!mounted) return;
+
       setState(() {
-        if (widget.isExplorer) {
-          _seconds--;
-        } else {
-          _seconds++;
-        }
+        _elapsedSeconds = seconds;
       });
 
-      if (widget.isExplorer && _seconds <= 0) {
+      widget.onElapsedUpdate?.call(seconds);
+
+      if (widget.isExplorer && (3600 - seconds <= 0)) {
         _timer?.cancel();
         if (widget.onTimeOver != null) {
-          final totalElapsed = 3600; // Explorer 모드는 3600초 기준
-          await widget.onTimeOver!(totalElapsed);
+          await widget.onTimeOver!(3600);
         }
       }
     });
@@ -409,13 +462,15 @@ class _GameTimerState extends State<GameTimer> {
 
   @override
   Widget build(BuildContext context) {
+    final displaySeconds =
+    widget.isExplorer ? (3600 - _elapsedSeconds) : _elapsedSeconds;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Icon(Icons.access_time, size: 18), // 시계 아이콘
-        const SizedBox(width: 4), // 아이콘과 텍스트 간격
+        const Icon(Icons.access_time, size: 18),
+        const SizedBox(width: 4),
         Text(
-          _format(_seconds),
+          _format(displaySeconds.clamp(0, 3600)),
           style: const TextStyle(fontSize: 16),
         ),
       ],
@@ -689,27 +744,29 @@ void showToastMessage(String message) {
   );
 }
 
-void _showGameExitDialog(BuildContext context) {
-  showDialog(
+Future<bool> showExitGameDialog(BuildContext context) async {
+  final result = await showDialog<bool>(
     context: context,
-    builder: (_) => AlertDialog(
-      title: const Text('게임 종료'),
-      content: const Text('게임을 종료하시겠습니까?'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(), // 다이얼로그 닫기
-          child: const Text('취소'),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            Navigator.of(context).pop(); // 다이얼로그 닫기
-            Navigator.of(context).pop(); // 게임 화면 종료
-          },
-          child: const Text('종료'),
-        ),
-      ],
-    ),
+    barrierDismissible: false, // 다이얼로그 밖을 눌러도 닫히지 않도록
+    builder: (context) {
+      return AlertDialog(
+        title: Text('게임 종료'),
+        content: Text('정말로 게임을 종료하시겠습니까?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('아니요'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('예'),
+          ),
+        ],
+      );
+    },
   );
+
+  return result ?? false; // 사용자가 아무 선택도 안 했을 경우 false
 }
 void _showGameOverDialog(BuildContext context) {
   showDialog(
