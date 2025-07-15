@@ -567,34 +567,45 @@ class LocationCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          GestureDetector(
-            onTap: () {
-              showDialog(
-                context: context,
-                builder: (_) => Dialog(
-                  insetPadding: const EdgeInsets.all(16),
-                  backgroundColor: Colors.black,
-                  child: InteractiveViewer(
-                    child: Image.network(
-                      location.imagePath,
-                      fit: BoxFit.contain,
+          Expanded(
+              child: ListView(
+                shrinkWrap: true, // 자식만큼만 크기 차지
+                physics: NeverScrollableScrollPhysics(), // Column 스크롤에 맡김
+                padding: const EdgeInsets.all(16),
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (_) => Dialog(
+                          insetPadding: const EdgeInsets.all(16),
+                          backgroundColor: Colors.black,
+                          child: InteractiveViewer(
+                            child: Image.network(
+                              location.imagePath,
+                              height: 300,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        location.imagePath,
+                        height: 300,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        cacheWidth: 600,
+                        cacheHeight: 800,
+                      ),
                     ),
                   ),
-                ),
-              );
-            },
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.network(
-                location.imagePath,
-                height: 300,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                cacheWidth: 600,
-                cacheHeight: 800,
+                ],
               ),
-            ),
           ),
+
         ],
       ),
     );
