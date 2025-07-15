@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:kakao_map_plugin/kakao_map_plugin.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../services/record_service.dart';
+import 'package:locquest_front/start_page.dart';
+
+final storage = FlutterSecureStorage();
 
 class MyRecordPage extends StatefulWidget {
   const MyRecordPage({super.key});
@@ -13,7 +17,6 @@ class _MyRecordPageState extends State<MyRecordPage> with SingleTickerProviderSt
   late TabController _tabController;
   String selectedRegion = '전체';
   final List<String> regions = ['전체', '카이스트', '어은동', '궁동'];
-  final userId = 3; //여기서 userId 할당
   late String selectedMode;
   late List<RecordEntry> records = [];
 
@@ -35,7 +38,15 @@ class _MyRecordPageState extends State<MyRecordPage> with SingleTickerProviderSt
 
   void _fetchRecords() async {
     try {
-      final gameRecords = await RecordService.fetchGameRecords(3); // 실제 userId로 대체
+      final userId = await loadUserId(); // secure_storage에서 userId 읽기
+
+      if (userId == null) {
+        print('userId가 없습니다. 로그인 필요');
+        return;
+      }
+
+      final gameRecords = await RecordService.fetchGameRecords(userId); // userId는 String
+
       setState(() {
         records = gameRecords.map((gr) {
           return RecordEntry(
@@ -44,7 +55,7 @@ class _MyRecordPageState extends State<MyRecordPage> with SingleTickerProviderSt
             region: _mapCategoryIdToRegion(gr.categoryId),
             date: gr.gameDate,
             result: gr.success ? '성공' : '실패',
-            places: [],  // 아직 위치 정보는 없으므로 빈 리스트
+            places: [], // 아직 위치 정보는 없으므로 빈 리스트
           );
         }).toList();
       });
@@ -78,7 +89,7 @@ class _MyRecordPageState extends State<MyRecordPage> with SingleTickerProviderSt
           MyProfileCard(
               nickname: 'default_user',
               profileImageUrl: 'https://picsum.photos/600/400',
-              onLogout: (){}
+              onLogout: () => _handleLogout(context),
           ),
           TabBar(
             controller: _tabController,
@@ -92,6 +103,20 @@ class _MyRecordPageState extends State<MyRecordPage> with SingleTickerProviderSt
           ),
         ],
       ),
+    );
+  }
+
+  void _handleLogout(BuildContext context) async {
+    await storage.delete(key: 'userId'); // userId 삭제
+
+    // 필요 시 다른 값도 삭제 가능
+    await storage.deleteAll();
+
+    // 홈 또는 로그인 페이지로 이동
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => StartPage()),
+          (route) => false,
     );
   }
 
@@ -357,6 +382,11 @@ String _mapCategoryIdToRegion(int id) {
     default:
       return '전체';
   }
+}
+
+Future<String?> loadUserId() async {
+  final storage = FlutterSecureStorage();
+  return await storage.read(key: 'userId');
 }
 
 

@@ -39,6 +39,7 @@ class _GamePageState extends State<GamePage> {
 
   late StreamSubscription<Position> _positionSubscription;
   bool isMapReady = false;
+  bool isLocReady = false;
 
   List<Location> _locations = [];
 
@@ -67,7 +68,7 @@ class _GamePageState extends State<GamePage> {
 
       setState(() {
         _locations = locs;
-        isMapReady = true;
+        isLocReady = true;
       });
 
       // 마커나 초기 지도 센터 설정 등 추가 작업 가능
@@ -156,7 +157,7 @@ class _GamePageState extends State<GamePage> {
       ),
       body: Stack(
         children: [
-          if (isMapReady)
+          if (isMapReady && isLocReady)
             SizedBox(
               height: MediaQuery.of(context).size.height * 0.7,
               width: MediaQuery.of(context).size.width,
