@@ -1,9 +1,12 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
+
+import 'models/category_model.dart';
 
 class AddLocationPage extends StatefulWidget {
   const AddLocationPage({super.key});
@@ -117,6 +120,7 @@ class _AddLocationPageState extends State<AddLocationPage> {
       ..fields['locName'] = _nameController.text
       ..fields['latitude'] = _photoLatLng!.latitude.toString()
       ..fields['longitude'] = _photoLatLng!.longitude.toString()
+      ..fields['categoryId'] = selectedCategory!.categoryId.toString()
       ..files.add(await http.MultipartFile.fromPath(
         'image',
         _image!.path,
@@ -131,6 +135,20 @@ class _AddLocationPageState extends State<AddLocationPage> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("업로드 성공: $resStr")));
     } else {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("업로드 실패 (${response.statusCode})")));
+    }
+  }
+
+  CategoryModel? selectedCategory;
+  Future<List<CategoryModel>> fetchCategories() async {
+    final url = Uri.parse('http://34.47.75.182:8080/game/getCategories');
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      final json = jsonDecode(response.body);
+      final List<dynamic> list = json['categoryList'];
+      return list.map((item) => CategoryModel.fromJson(item)).toList();
+    } else {
+      throw Exception('카테고리 불러오기 실패: ${response.statusCode}');
     }
   }
 
@@ -155,6 +173,35 @@ class _AddLocationPageState extends State<AddLocationPage> {
               decoration: InputDecoration(labelText: '장소 이름'),
             ),
             SizedBox(height: 16),
+            FutureBuilder<List<CategoryModel>>(
+                future: fetchCategories(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return CircularProgressIndicator();
+                  } else if (snapshot.hasError) {
+                    return Text('Error: ${snapshot.error}');
+                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return Text('카테고리가 없습니다.');
+                  } else {
+                    final categories = snapshot.data!;
+                    return DropdownButton<CategoryModel>(
+                      value: selectedCategory,
+                      hint: Text('카테고리 선택'),
+                      items: categories.map((category) {
+                        return DropdownMenuItem<CategoryModel>(
+                          value: category,
+                          child: Text(category.categoryName),
+                        );
+                      }).toList(),
+                      onChanged: (CategoryModel? newValue) {
+                        setState(() {
+                          selectedCategory = newValue;
+                        });
+                      },
+                    );
+                  }
+                }
+            ),
             if (_currentLatLng != null && _accuracy != null)
               Column(
                 children: [

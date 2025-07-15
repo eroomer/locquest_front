@@ -16,4 +16,12 @@ class CategoryModel {
       categoryImage: json['categoryImage'],
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+          other is CategoryModel && runtimeType == other.runtimeType && categoryId == other.categoryId;
+
+  @override
+  int get hashCode => categoryId.hashCode;
 }
