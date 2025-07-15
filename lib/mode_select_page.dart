@@ -4,7 +4,12 @@ import 'package:locquest_front/game_page.dart';
 import 'package:locquest_front/models/game_timer_controller.dart';
 
 class ModeSelectPage extends StatelessWidget {
-  const ModeSelectPage({super.key});
+  final int categoryId;
+
+  const ModeSelectPage({
+    super.key,
+    required this.categoryId
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -26,12 +31,12 @@ class ModeSelectPage extends StatelessWidget {
             ModeCard(
               title: 'Explorer Mode',
               description: '제한 시간 안에 최대한 많은 장소를 찾으세요!',
-              onTap: () => showModeDialog(context, 'Explorer Mode'),
+              onTap: () => showModeDialog(context, 'Explorer Mode', categoryId),
             ),
             ModeCard(
               title: 'Time Attack Mode',
               description: '모든 장소를 얼마나 빨리 찾을 수 있을까요?',
-              onTap: () => showModeDialog(context, 'Time Attack Mode'),
+              onTap: () => showModeDialog(context, 'Time Attack Mode', categoryId),
             ),
           ],
         ),
@@ -91,8 +96,8 @@ class ModeCard extends StatelessWidget {
   }
 }
 
-void showModeDialog(BuildContext context, String title) {
-  final isExplorer = title == 'Explorer 모드';
+void showModeDialog(BuildContext context, String title, int category) {
+  final isExplorer = title == 'Explorer Mode';
 
   showDialog(
     context: context,
@@ -115,8 +120,8 @@ void showModeDialog(BuildContext context, String title) {
               context,
               MaterialPageRoute(
                 builder: (_) => ChangeNotifierProvider(
-                  create: (_) => GameTimerController(isExplorer: true), // ← 모드에 맞게 전달
-                  child: const GamePage(isExplorer: true, category: 1),
+                  create: (_) => GameTimerController(isExplorer: isExplorer), // ← 모드에 맞게 전달
+                  child: GamePage(isExplorer: isExplorer, category: category),
                 ),
               ),
             );
