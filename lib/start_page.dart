@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:locquest_front/mode_select_page.dart';
 import 'package:locquest_front/ranking_page.dart';
 import 'package:locquest_front/myrecord_page.dart';
+import 'package:locquest_front/select_category_page.dart';
 
 class StartPage extends StatelessWidget {
   const StartPage({super.key});
@@ -19,7 +20,7 @@ class StartPage extends StatelessWidget {
           CustomButton(text: '게임시작', onPressed: (){
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => ModeSelectPage()),
+              MaterialPageRoute(builder: (context) => SelectCategoryPage()),
             );
           }),
           CustomButton(text: '랭킹보기', onPressed: (){
