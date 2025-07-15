@@ -201,7 +201,7 @@ Future<List<ExplorerRankEntry>> fetchExplorerRankingData(int categoryId) async {
 }
 
 Future<List<TimeAttackRankEntry>> fetchTimeAttackRankingData(int categoryId) async {
-  final serverUrl = 'http://localhost:8080/ranking/timeAttack?categoryId=$categoryId';
+  final serverUrl = 'http://34.47.75.182/ranking/timeAttack?categoryId=$categoryId';
   debugPrint('[TimeAttack] 요청 URL: $serverUrl');
 
   try {

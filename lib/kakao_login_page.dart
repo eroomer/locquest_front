@@ -17,7 +17,7 @@ class _KakaoLoginPageState extends State<KakaoLoginPage> {
   static const String _redirectUri =
       'kakaod1847048a1f58aeb83b34e2914f689c8://oauth';
   static const String _serverUrl =
-      'http://localhost:8080/auth/kakaoLogin';
+      'http://34.47.75.182/auth/kakaoLogin';
 
   bool _isLoading = false;
 

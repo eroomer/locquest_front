@@ -6,7 +6,7 @@ import '../models/game_start_response.dart';
 
 class ApiService {
   Future<GameStartResponse> startGame(int categoryId, String gameMode) async {
-    final uri = Uri.parse('http://localhost:8080/game/startGame');
+    final uri = Uri.parse('http://34.47.75.182/game/startGame');
     final now = DateTime.now();
 
     final resp = await http.post(

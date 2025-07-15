@@ -45,7 +45,7 @@ class _AddLocationPageState extends State<AddLocationPage> {
         _positionHistory.add(pos);
         if (_positionHistory.length > 3) _positionHistory.removeAt(0);
 
-        _canTakePhoto = _isLocationStable(_positionHistory) && pos.accuracy <= 10;
+        _canTakePhoto = _isLocationStable(_positionHistory) && pos.accuracy <= 20;
       });
     });
   }
@@ -112,7 +112,7 @@ class _AddLocationPageState extends State<AddLocationPage> {
 
     setState(() => _isUploading = true);
 
-    final uri = Uri.parse("http://localhost:8080/upload");
+    final uri = Uri.parse("http://34.47.75.182/location/uploadLocation");
     final request = http.MultipartRequest('POST', uri)
       ..fields['locName'] = _nameController.text
       ..fields['latitude'] = _photoLatLng!.latitude.toString()
@@ -153,10 +153,6 @@ class _AddLocationPageState extends State<AddLocationPage> {
             TextField(
               controller: _nameController,
               decoration: InputDecoration(labelText: '장소 이름'),
-            ),
-            TextField(
-              controller: _descController,
-              decoration: InputDecoration(labelText: '장소 설명 (선택)'),
             ),
             SizedBox(height: 16),
             if (_currentLatLng != null && _accuracy != null)

@@ -27,7 +27,7 @@ class _AuthCheckPageState extends State<AuthCheckPage> {
     if (jwt != null) {
       try {
         final resp = await http.get(
-          Uri.parse('http://localhost:8080/auth/validate'),
+          Uri.parse('http://34.47.75.182/auth/validate'),
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer $jwt',
