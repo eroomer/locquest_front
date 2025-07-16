@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:locquest_front/game_page.dart';
 
+import 'models/mode_card_model.dart';
+
 class ModeSelectPage extends StatelessWidget {
   final int categoryId;
 
@@ -19,21 +21,25 @@ class ModeSelectPage extends StatelessWidget {
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Text(
               '게임 모드를 선택하세요',
               style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
-            ModeCard(
+            const SizedBox(height: 16),
+            ModeCardModel(
               title: 'Explorer Mode',
-              description: '제한 시간 안에 최대한 많은 장소를 찾으세요!',
+              description: '제한시간 내 최대한 많은 장소를 찾으세요!',
+              imagePath: 'assets/images/map.png',
               onTap: () => showModeDialog(context, 'Explorer Mode', categoryId),
             ),
-            ModeCard(
+            const SizedBox(height: 16),
+            ModeCardModel(
               title: 'Time Attack Mode',
-              description: '모든 장소를 얼마나 빨리 찾을 수 있을까요?',
+              description: '주어진 장소를 최대한 빨리 찾아보세요!',
+              imagePath: 'assets/images/time.png',
               onTap: () => showModeDialog(context, 'Time Attack Mode', categoryId),
             ),
           ],
@@ -46,12 +52,14 @@ class ModeSelectPage extends StatelessWidget {
 class ModeCard extends StatelessWidget {
   final String title;
   final String description;
+  final String imagePath;
   final VoidCallback onTap;
 
   const ModeCard({
     super.key,
     required this.title,
     required this.description,
+    required this.imagePath,
     required this.onTap,
   });
 

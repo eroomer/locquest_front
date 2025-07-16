@@ -24,16 +24,72 @@ class _KakaoLoginPageState extends State<KakaoLoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('카카오 로그인')),
+      backgroundColor: Colors.grey[100],
+      appBar: AppBar(
+        title: const Text('LocQuest 로그인'),
+        centerTitle: true,
+        elevation: 0,
+      ),
       body: SafeArea(
-        child: Center(
-          child: _isLoading
-              ? const CircularProgressIndicator()
-              : _buildLoginContent(),
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset(
+                'assets/images/logo.png', // 앱 로고 이미지
+                height: 120,
+              ),
+              const SizedBox(height: 32),
+              const Text(
+                'LocQuest에 오신 걸 환영합니다!',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                '위치 기반 미션을 수행하며\n즐거운 탐험을 시작해보세요.',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.black54,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 40),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton.icon(
+                  icon: Image.asset(
+                    'assets/images/kakao_logo.png', // 카카오 로고 아이콘
+                    height: 24,
+                  ),
+                  label: const Text(
+                    '카카오 로그인',
+                    style: TextStyle(fontSize: 16, color: Colors.black),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFFE812), // 카카오 색상
+                    elevation: 1,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: _loginWithKakao
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
+
 
   Widget _buildLoginContent() {
     return Column(
