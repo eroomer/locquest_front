@@ -37,20 +37,20 @@ class _MyRecordPageState extends State<MyRecordPage> with SingleTickerProviderSt
 
     _fetchRecords();
   }
-  Future<String?> _loadUserIdAndStoreInfo() async {
+  Future<int?> _loadUserIdAndStoreInfo() async {
     final storage = FlutterSecureStorage();
 
-    final userId = await storage.read(key: 'userId');
+    final userId_str = await storage.read(key: 'userId');
     final nickname = await storage.read(key: 'nickname');
     final profileImage = await storage.read(key: 'profileImage');
 
-    if (userId == null) return null;
+    if (userId_str == null) return null;
 
     setState(() {
       _nickname = nickname;
       _profileImageUrl = profileImage;
     });
-
+    int userId = int.parse(userId_str);
     return userId;
   }
 

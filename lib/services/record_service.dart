@@ -4,7 +4,8 @@ import '../models/record_games_response.dart';
 import '../models/record_details_response.dart';
 
 class RecordService {
-  static Future<List<GameRecord>> fetchGameRecords(String userId) async {
+  static Future<List<GameRecord>> fetchGameRecords(int userId) async {
+    print(userId);
     final url = Uri.parse('http://34.47.75.182:8080/record/getGames?userId=$userId');
     final res = await http.get(url);
 

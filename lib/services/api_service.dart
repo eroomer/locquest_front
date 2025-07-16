@@ -91,9 +91,9 @@ class ApiService {
       'endTime': endTime.toIso8601String(),
       'locCount': locCount,
       'hintCount': hintCount,
-      'failedLocations':
-      failedLocationIds.map((id) => {'locId': id}).toList(),
+      'failedLocations': failedLocationIds,
     });
+    print("게임 종료 요청 보냄: $body");
     final response = await http.post(url,
         headers: {'Content-Type': 'application/json'}, body: body);
 

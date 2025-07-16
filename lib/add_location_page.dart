@@ -115,7 +115,7 @@ class _AddLocationPageState extends State<AddLocationPage> {
 
     setState(() => _isUploading = true);
 
-    final uri = Uri.parse("http://34.47.75.182/location/uploadLocation");
+    final uri = Uri.parse("http://34.47.75.182:8080/location/uploadLocation");
     final request = http.MultipartRequest('POST', uri)
       ..fields['locName'] = _nameController.text
       ..fields['latitude'] = _photoLatLng!.latitude.toString()

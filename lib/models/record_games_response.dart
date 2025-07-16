@@ -19,7 +19,7 @@ class GameRecord {
     return GameRecord(
       gameId: json['gameId'],
       gameMode: json['gameMode'],
-      success: json['success'],
+      success: json['success'] ?? false,
       gameDate: DateTime.parse(json['gameDate']),
       hintCount: json['hintCount'],
       categoryId: json['categoryId'],

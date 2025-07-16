@@ -303,6 +303,7 @@ class _GamePageState extends State<GamePage> {
               },
               // 힌트 버튼 로직
               onHintPressed: (Location loc) {
+
                 if (loc.hintUsed >= 3) {
                   showToastMessage('$_currentPage번 장소에 이미 3개의 힌트를 사용했습니다.');
                   return;
