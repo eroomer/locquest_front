@@ -16,7 +16,7 @@ class MyRecordPage extends StatefulWidget {
 class _MyRecordPageState extends State<MyRecordPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   String selectedRegion = '전체';
-  final List<String> regions = ['전체', '카이스트', '어은동', '궁동'];
+  final List<String> regions = ['전체', '카이스트', '궁동', '유성온천'];
   late String selectedMode;
   late List<RecordEntry> records = [];
   String? _nickname;
@@ -107,7 +107,7 @@ class _MyRecordPageState extends State<MyRecordPage> with SingleTickerProviderSt
         children: [
           MyProfileCard(
               nickname: _nickname ?? '게스트',
-              profileImageUrl: _profileImageUrl ?? 'https://via.placeholder.com/150',
+              profileImageUrl: _profileImageUrl ?? 'https://picsum.photos/200',
               onLogout: () => _handleLogout(context),
           ),
           TabBar(

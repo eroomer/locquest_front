@@ -1,15 +1,35 @@
 import 'package:flutter/material.dart';
-import 'package:locquest_front/mode_select_page.dart';
 import 'package:locquest_front/ranking_page.dart';
 import 'package:locquest_front/myrecord_page.dart';
 import 'package:locquest_front/select_category_page.dart';
 import 'package:locquest_front/add_location_page.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class StartPage extends StatelessWidget {
   const StartPage({super.key});
 
+  void _requestLocationPermission() async {
+    final status = await Permission.location.status;
+    if (!status.isGranted) {
+      final result = await Permission.location.request();
+      if (result.isGranted) {
+        print('위치 권한이 허용되었습니다.');
+      } else {
+        print('위치 권한이 거부되었습니다.');
+        if (result.isPermanentlyDenied){
+          openAppSettings();
+        }
+      }
+    } else {
+      print('이미 권한 있음');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _requestLocationPermission();
+    });
     return Scaffold( // ← 여기 추가
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -66,7 +86,6 @@ class StartPage extends StatelessWidget {
     );
   }
 }
-
 
 class CustomButton extends StatelessWidget {
   final String text;

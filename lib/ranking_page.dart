@@ -14,7 +14,7 @@ class _RankingPageState extends State<RankingPage> with SingleTickerProviderStat
   late TabController _tabController;
 
   String selectedCategory = '전체';
-  final List<String> categories = ['전체', '카이스트', '어은동', '궁동'];
+  final List<String> categories = ['전체', '카이스트', '궁동', '유성온천'];
 
   late String selectedMode;
 
