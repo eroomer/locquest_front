@@ -10,43 +10,63 @@ class StartPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(16),
-      color: Colors.white,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Image.asset('assets/images/logo_transparent.png'),
-          CustomButton(text: '게임시작', onPressed: (){
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => SelectCategoryPage()),
-            );
-          }),
-          CustomButton(text: '랭킹보기', onPressed: (){
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => RankingPage()),
-            );
-          }),
-          CustomButton(text: '내 정보', onPressed: (){
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => MyRecordPage()),
-            );
-          }),
-          CustomButton(text: '장소 추가', onPressed: (){
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => AddLocationPage()),
-            );
-          }),
-        ],
+    return Scaffold( // ← 여기 추가
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Image.asset('assets/images/logo_transparent.png'),
+              CustomButton(
+                text: '게임시작',
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => SelectCategoryPage()),
+                  );
+                },
+              ),
+              const SizedBox(height: 20),
+              CustomButton(
+                text: '랭킹보기',
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => RankingPage()),
+                  );
+                },
+              ),
+              const SizedBox(height: 20),
+              CustomButton(
+                text: '내 정보',
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => MyRecordPage()),
+                  );
+                },
+              ),
+              const SizedBox(height: 20),
+              CustomButton(
+                text: '장소 추가',
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => AddLocationPage()),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 }
+
 
 class CustomButton extends StatelessWidget {
   final String text;
@@ -60,21 +80,34 @@ class CustomButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: onPressed,
-      style: ElevatedButton.styleFrom(
-        minimumSize: Size(400, 50),
-        backgroundColor: Colors.green,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-      ),
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontSize: 50,
-          fontWeight: FontWeight.bold,
-          color: Colors.black,
+    return SizedBox(
+      width: 400,
+      height: 50,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onPressed,
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [
+                Color(0xFF76c893), // apple green
+                Color(0xFF4caf50), // forest green
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Center(
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontSize: 23, // 너무 크면 줄여도 좋아
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+          ),
         ),
       ),
     );
