@@ -395,9 +395,9 @@ String _mapCategoryIdToRegion(int id) {
     case 1:
       return '카이스트';
     case 2:
-      return '어은동';
-    case 3:
       return '궁동';
+    case 3:
+      return '유성온천';
     default:
       return '전체';
   }

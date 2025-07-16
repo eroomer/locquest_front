@@ -133,8 +133,8 @@ class _RankingListState extends State<RankingList> {
   int _getCategoryId(String categoryName) {
     switch (categoryName) {
       case '카이스트': return 1;
-      case '어은동': return 2;
-      case '궁동': return 3;
+      case '궁동': return 2;
+      case '유성온천': return 3;
       default: return 0; // 전체
     }
   }
